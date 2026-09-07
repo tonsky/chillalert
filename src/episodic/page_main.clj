@@ -97,13 +97,16 @@
                    {"data-on:mouseenter" (str "matchMedia('(hover: hover)').matches && ("
                                            code-signal " = " (json/generate-string (episode-code ep)) ", "
                                            name-signal " = " (json/generate-string (or (:name ep) "")) ")")
-                    "data-on:mouseleave" (str code-signal " = '', " name-signal " = ''")})]
+                    "data-on:mouseleave" (str code-signal " = '', " name-signal " = ''")})
+        n        (count episodes)
+        ;; sprite has a distinct shape for the first, middle and last episode of a season
+        position (fn [i] (cond (zero? i) "first" (= i (dec n)) "last" :else "middle"))]
     [:div.season
-     (for [[ep state] (map vector episodes states)]
+     (for [[i ep state] (map vector (range) episodes states)]
        (if (= :upcoming state)
-         [:span.ep.upcoming (hover ep)]
+         [:span.ep (merge (hover ep) {:class (str "upcoming " (position i))})]
          [:button.ep (merge (hover ep)
-                       {:class         (name state)
+                       {:class         (str (name state) " " (position i))
                         :type          "button"
                         ;; shift+click marks a range, see handle-toggle
                         "data-on:click" (str "@post('/episodes/" (:id ep) "/toggle?shift=' + (evt.shiftKey ? 1 : 0))")})]))

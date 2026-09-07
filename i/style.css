@@ -1,10 +1,10 @@
 :root {
   color-scheme: dark;
   --bg: #14181C;
-  --fg: #f0f0f0;
-  --muted: #9a9a9a;
-  --input: #333;
-  --accent: #1a8cff;
+  --fg: #CDE;
+  --muted: #566778;
+  --input: #2D3440;
+  --accent: #009839;
   --ep: #e0e0e0;
   --ep-dim: #7a7a7a;
 }
@@ -39,28 +39,32 @@ a { color: var(--accent); }
 
 .search {
   flex: 1;
-  height: 44px;
-  padding: 0 20px;
+  height: 36px;
+  padding: 0 12px 3px;
   border: none;
-  border-radius: 22px;
+  border-radius: 12px;
+  corner-shape: squircle;
   background: var(--input);
   color: var(--fg);
   font: inherit;
   outline: none;
 }
 
+.search::placeholder { color: var(--muted); }
+
 .search:focus { box-shadow: 0 0 0 2px var(--accent); }
 
 .btn {
   display: inline-block;
-  height: 44px;
-  padding: 0 20px;
+  height: 36px;
+  padding: 0 20px 0px;
   border: none;
-  border-radius: 22px;
+  border-radius: 12px;
+  corner-shape: squircle;
   background: var(--accent);
-  color: #fff;
+  color: var(--bg);
   font: inherit;
-  line-height: 44px;
+  line-height: 36px;
   text-decoration: none;
   cursor: pointer;
   white-space: nowrap;
@@ -125,8 +129,12 @@ a { color: var(--accent); }
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0;
+  /* 8px between wrapped lines of one season, and the same between seasons */
+  gap: 8px 0;
+  margin-bottom: 8px;
 }
+
+.season:last-child { margin-bottom: 0; }
 
 .ep {
   display: inline-block;
@@ -134,18 +142,24 @@ a { color: var(--accent); }
   height: 32px;
   padding: 0;
   border: none;
-  background: url("ep.png") no-repeat 0 0 / 96px 64px;
+  background: url("ep.png") no-repeat 0 0 / 288px 64px;
   cursor: pointer;
+  --group: 0;
+  --col: 1;
+  /* 32px cells from ep.png, a 9x2 atlas at 2x. Columns: 3 per state (watched / available / upcoming),
+     one each for the first, middle and last episode of a season. Second row is hovered */
+  background-position: calc((var(--group) * 3 + var(--col)) * -32px) 0;
 }
 
-/* 36px cells from ep.png, a 3x2 atlas at 2x: watched / unwatched / upcoming, second row hovered */
-.ep.watched   { background-position: 0 0; }
-.ep.available { background-position: -32px 0; }
-.ep.upcoming  { background-position: -64px 0; cursor: default; }
+.ep.watched   { --group: 0; }
+.ep.available { --group: 1; }
+.ep.upcoming  { --group: 2; cursor: default; }
 
-.ep.watched:hover   { background-position: 0 -32px; }
-.ep.available:hover { background-position: -32px -32px; }
-.ep.upcoming:hover  { background-position: -64px -32px; }
+.ep.first  { --col: 0; }
+.ep.middle { --col: 1; }
+.ep.last   { --col: 2; }
+
+.ep:hover { background-position-y: -32px; }
 
 .upcoming-label {
   margin-left: 6px;
