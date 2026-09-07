@@ -131,27 +131,23 @@ a { color: var(--accent); }
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  /* 8px between wrapped lines of one season, and the same between seasons */
-  gap: 8px 0;
-  margin-bottom: 8px;
+  /* the 8px gap between wrapped lines and between seasons is baked into ep.png cells */
   /* dragging across episodes marks a range, not selects text */
   user-select: none;
   -webkit-user-select: none;
 }
 
-.season:last-child { margin-bottom: 0; }
-
 .ep {
   display: inline-block;
   width: 32px;
-  height: 32px;
+  height: 40px;
   padding: 0;
   border: none;
-  background: url("ep.png") no-repeat 0 0 / 288px 64px;
+  background: url("ep.png") no-repeat 0 0 / 288px 80px;
   cursor: pointer;
   --group: 0;
   --col: 1;
-  /* 32px cells from ep.png, a 9x2 atlas at 2x. Columns: 3 per state (watched / available / upcoming),
+  /* 32x40px cells from ep.png, a 9x2 atlas at 2x. Columns: 3 per state (watched / available / upcoming),
      one each for the first, middle and last episode of a season. Second row is hovered */
   background-position: calc((var(--group) * 3 + var(--col)) * -32px) 0;
 }
@@ -165,7 +161,7 @@ a { color: var(--accent); }
 .ep.last   { --col: 2; }
 
 /* .hovered: part of a range being dragged, see render-season */
-.ep:hover, .ep.hovered { background-position-y: -32px; }
+.ep:hover, .ep.hovered { background-position-y: -40px; }
 
 .upcoming-label {
   margin-left: 6px;
