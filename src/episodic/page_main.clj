@@ -72,6 +72,13 @@
   [show]
   [(str "$_hoverCode" (:id show)) (str "$_hoverName" (:id show))])
 
+(defn drag-signals
+  "[from-signal to-signal from-id-signal to-id-signal]: indexes of the anchor and the current episode
+   of a mouse drag (-1 when not dragging) and their episode ids"
+  [show]
+  (let [id (:id show)]
+    [(str "$_dragFrom" id) (str "$_dragTo" id) (str "$_dragFromId" id) (str "$_dragToId" id)]))
+
 (defn upcoming-label
   "Sep 10–Oct 2 / Oct 2 / Sep 10–TBA / TBA, nil when nothing is upcoming"
   [upcoming]
@@ -85,19 +92,37 @@
 
 ;; Rendering
 
-(defn render-season [show episodes watched today]
+(defn render-season
+  "offset: index of the season's first episode within the show, drag ranges are tracked by index"
+  [show episodes watched today offset]
   (let [states   (map #(episode-state % watched today) episodes)
         upcoming (->> (map vector episodes states)
                    (filter #(= :upcoming (second %)))
                    (map first))
         [code-signal name-signal] (hover-signals show)
+        [from-signal to-signal from-id-signal to-id-signal] (drag-signals show)
+        ;; while hovering, show title becomes episode title. Skipped on touch devices:
+        ;; the synthesized mouseenter would swap the title before the click lands
+        hover-enter (fn [ep]
+                      (str "matchMedia('(hover: hover)').matches && ("
+                        code-signal " = " (json/generate-string (episode-code ep)) ", "
+                        name-signal " = " (json/generate-string (or (:name ep) "")) ")"))
+        hover-leave (str code-signal " = '', " name-signal " = ''")
         hover    (fn [ep]
-                   ;; while hovering, show title becomes episode title. Skipped on touch devices:
-                   ;; the synthesized mouseenter would swap the title before the click lands
-                   {"data-on:mouseenter" (str "matchMedia('(hover: hover)').matches && ("
-                                           code-signal " = " (json/generate-string (episode-code ep)) ", "
-                                           name-signal " = " (json/generate-string (or (:name ep) "")) ")")
-                    "data-on:mouseleave" (str code-signal " = '', " name-signal " = ''")})
+                   {"data-on:mouseenter" (hover-enter ep)
+                    "data-on:mouseleave" hover-leave})
+        ;; press and drag across episodes of one show, in either direction and across seasons: the range
+        ;; between the anchor and the current episode lights up as hovered, on release it gets the state
+        ;; the anchor would have been toggled to. Release on the anchor itself is left to the click handler
+        drag     (fn [ep i]
+                   {"data-on:mousedown"  (str "evt.button === 0 && (evt.preventDefault(), "
+                                           from-signal " = " i ", " to-signal " = " i ", "
+                                           from-id-signal " = " (:id ep) ", " to-id-signal " = " (:id ep) ")")
+                    "data-on:mouseenter" (str (hover-enter ep) ", "
+                                           from-signal " >= 0 && (" to-signal " = " i ", " to-id-signal " = " (:id ep) ")")
+                    "data-on:mouseleave" hover-leave
+                    "data-class:hovered" (str from-signal " >= 0 && Math.min(" from-signal ", " to-signal ") <= " i
+                                           " && " i " <= Math.max(" from-signal ", " to-signal ")")})
         n        (count episodes)
         ;; sprite has a distinct shape for the first, middle and last episode of a season
         position (fn [i] (cond (zero? i) "first" (= i (dec n)) "last" :else "middle"))]
@@ -105,7 +130,7 @@
      (for [[i ep state] (map vector (range) episodes states)]
        (if (= :upcoming state)
          [:span.ep (merge (hover ep) {:class (str "upcoming " (position i))})]
-         [:button.ep (merge (hover ep)
+         [:button.ep (merge (drag ep (+ offset i))
                        {:class         (str (name state) " " (position i))
                         :type          "button"
                         ;; shift+click marks a range, see handle-toggle
@@ -116,9 +141,19 @@
 (defn render-show [show episodes watched]
   (let [today   (str (core/today))
         seasons (partition-by :season episodes)
-        [code-signal name-signal] (hover-signals show)]
+        [code-signal name-signal] (hover-signals show)
+        [from-signal to-signal from-id-signal to-id-signal] (drag-signals show)
+        offsets (reductions + 0 (map count seasons))]
     [:div.show {:id (str "show-" (:id show))
-                "data-signals" (str "{" (subs code-signal 1) ": '', " (subs name-signal 1) ": ''}")}
+                "data-signals" (str "{" (subs code-signal 1) ": '', " (subs name-signal 1) ": '', "
+                                 (subs from-signal 1) ": -1, " (subs to-signal 1) ": -1, "
+                                 (subs from-id-signal 1) ": 0, " (subs to-id-signal 1) ": 0}")
+                ;; a drag ends wherever the mouse is released, the current episode is the range end.
+                ;; Same episode as the anchor: nothing to do here, the click that follows toggles it
+                "data-on:mouseup__window" (str from-signal " >= 0 && ("
+                                            from-signal " !== " to-signal
+                                            " && @post('/episodes/' + " from-id-signal " + '/toggle?to=' + " to-id-signal "), "
+                                            from-signal " = -1, " to-signal " = -1)")}
      [:div.poster
       (if (:poster_path show)
         [:img {:src (str "/posters/" (:id show) ".jpg?t=" (:updated_at show)) :alt ""}]
@@ -129,8 +164,8 @@
        [:span {"data-text" (str code-signal " ? " name-signal " : " (json/generate-string (:name show)))}
         (:name show)]]
       [:div.subtitle (subtitle show)]
-      (for [season seasons]
-        (render-season show season watched today))]]))
+      (for [[season offset] (map vector seasons offsets)]
+        (render-season show season watched today offset))]]))
 
 (defn render-show-for [user-id show]
   (render-show show (show-episodes (:id show)) (watched-ids user-id (:id show))))
@@ -152,20 +187,42 @@
 
 (defn handle-toggle
   "Plain click toggles one episode. With ?shift=1: an unwatched episode marks itself and every
-   aired episode before it as watched, a watched one unwatches itself and everything after it."
+   aired episode before it as watched, a watched one unwatches itself and everything after it.
+   With ?to=<episode id> (mouse drag): everything between the two episodes of the same show,
+   inclusive, gets the state the first one is toggled to."
   [req]
   (let [user-id    (-> req :user :id)
         episode-id (web/parse-id (web/path-param req 0))
         shift?     (= "1" (get-in req [:query-params "shift"]))
+        to-id      (web/parse-id (get-in req [:query-params "to"]))
         episode    (some->> episode-id (db/q1 "SELECT * FROM episode WHERE id = ?"))
+        to         (some->> to-id (db/q1 "SELECT * FROM episode WHERE id = ?"))
         show       (some->> episode :show_id (user-show user-id))]
-    (if-not show
+    (cond
+      (not show)
       (web/error-response 404 "Episode not found")
+
+      (and to-id (not= (:show_id to) (:id show)))
+      (web/error-response 404 "Episode not found")
+
+      :else
       (let [now      (core/now)
             today    (str (core/today))
             watched? (some? (db/q1 "SELECT 1 FROM watched WHERE user_id = ? AND episode_id = ?" user-id episode-id))
-            {:keys [season episode]} episode]
+            {:keys [season episode]} episode
+            [[lo-season lo-episode] [hi-season hi-episode]] (when to (sort [[season episode] [(:season to) (:episode to)]]))]
         (cond
+          (and to (not watched?))
+          (db/exec! "INSERT OR IGNORE INTO watched (user_id, episode_id, watched_at)
+                     SELECT ?, id, ? FROM episode
+                     WHERE show_id = ? AND (season, episode) BETWEEN (?, ?) AND (?, ?) AND air_date <= ?"
+            user-id now (:id show) lo-season lo-episode hi-season hi-episode today)
+
+          (and to watched?)
+          (db/exec! "DELETE FROM watched WHERE user_id = ? AND episode_id IN
+                       (SELECT id FROM episode WHERE show_id = ? AND (season, episode) BETWEEN (?, ?) AND (?, ?))"
+            user-id (:id show) lo-season lo-episode hi-season hi-episode)
+
           (and shift? (not watched?))
           (db/exec! "INSERT OR IGNORE INTO watched (user_id, episode_id, watched_at)
                      SELECT ?, id, ? FROM episode

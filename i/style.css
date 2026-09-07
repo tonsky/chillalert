@@ -132,6 +132,9 @@ a { color: var(--accent); }
   /* 8px between wrapped lines of one season, and the same between seasons */
   gap: 8px 0;
   margin-bottom: 8px;
+  /* dragging across episodes marks a range, not selects text */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .season:last-child { margin-bottom: 0; }
@@ -159,12 +162,13 @@ a { color: var(--accent); }
 .ep.middle { --col: 1; }
 .ep.last   { --col: 2; }
 
-.ep:hover { background-position-y: -32px; }
+/* .hovered: part of a range being dragged, see render-season */
+.ep:hover, .ep.hovered { background-position-y: -32px; }
 
 .upcoming-label {
   margin-left: 6px;
   font-size: 14px;
-  color: #ccc;
+  color: var(--muted);
 }
 
 .empty {

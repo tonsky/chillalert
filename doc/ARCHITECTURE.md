@@ -237,6 +237,13 @@ Sketch: poster left, title + one row of squares per season, upcoming date range 
   `?shift=1` (sent as `evt.shiftKey` from the click expression) marks a range instead: an
   unwatched episode plus every aired episode before it in `(season, episode)` order, or a
   watched episode plus everything after it, unwatched.
+  `?to=<episode id>` (mouse drag) marks the inclusive range between the two episodes, which
+  must belong to the same show: watched if the first one was unwatched, unwatched otherwise.
+- Drag: each show div declares signals `_dragFrom<id>` / `_dragTo<id>` (episode indexes within
+  the show, -1 when idle) and `_dragFromId<id>` / `_dragToId<id>`. Mousedown on a square sets
+  the anchor, mouseenter moves the end, and every square between them gets class `hovered`
+  (`data-class`, same sprite row as `:hover`). A window mouseup posts `toggle?to=` when the
+  end differs from the anchor and resets; releasing on the anchor is left to the click handler.
 - Hover: each show div declares a signal `_hover<id>`; squares set it to `s01e04 Name` on
   mouseenter and clear it on mouseleave, and the title has `data-text="$_hover<id> || 'Name'"`.
   Underscore-prefixed signals are not sent with requests.
