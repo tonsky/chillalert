@@ -10,3 +10,4 @@ target
 .clj-kondo/.cache/
 **/__pycache__/
 config.edn
+data/

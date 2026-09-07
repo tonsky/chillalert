@@ -40,6 +40,8 @@ See @Sketch.png
   - A line per season. In a line:
     - A square icon for each episode. Three states: watched, available, upcoming.
     - User can toggle available -> watched and back (store when this was clicked, not just boolean)
+    - Shift+click on unwatched episode marks it and everything before it watched. Shift+click on watched episode unwatches it and everything after it.
+    - Hovering over an episode square replaces show title with episode number + title, e.g. "s01e04 Adventures in Chicago"
     - After episodes, if there are upcoming episodes, date interval for first upcoming to last upcoming. So say show has 4 episodes out already, episode 5 is out on Sep 10 and episode 8 (season finale) on Oct 2. We will show "Sep 10..Oct 2". If one episode left, collapse to "Oct 2". In everything is out, no label. If year is different from current year, add year to.
 
 # Search/add show page

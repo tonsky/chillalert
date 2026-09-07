@@ -22,8 +22,9 @@ com.github.seancorfield/next.jdbc
 org.xerial/sqlite-jdbc
 ```
 
-Datastar is vendored as a static file (`i/datastar.js`), no CDN. SSE helpers
-(`datastar-patch-elements`, `datastar-patch-signals`) are ~30 lines, written by hand, no SDK.
+Datastar is vendored as a static file (`i/datastar_1.0.3.js`, v1.0.3, ES module), no CDN. No SDK and
+no SSE: Datastar v1 accepts plain `text/html` responses (morphed into the element with the same
+id) and `text/javascript` responses (executed), which is all this app needs.
 
 ## Layout
 
@@ -32,16 +33,16 @@ config.edn            hostname, tg token, tmdb token (gitignored)
 data/                 gitignored runtime dir
   episodic.sqlite
   posters/<show-id>.jpg
-i/                    static: style.css, datastar.js, favicon
+i/                    static: style.css, datastar_1.0.3.js, favicon
 src/episodic/
   core.clj            config, log, dev?, time helpers, timer (like site.core / allekinos.core)
-  db.clj              datasource (mount), migrations, small query helpers
+  db.clj              datasource (mount), migrations, q / q1 / exec! helpers
   tmdb.clj            TMDB client, show/season import, poster caching
-  telegram.clj        Bot API client, getUpdates loop (mount), /start handler
-  auth.clj            login page, nonce, session cookie, wrap-session / wrap-require-user
-  datastar.clj        SSE response helpers
-  page-main.clj       main page render + toggle handler
-  page-search.clj     search + add
+  telegram.clj        Bot API client: call!, send-message!, get-updates
+  auth.clj            login page, nonce, session cookie, middleware, getUpdates loop (mount)
+  web.clj             page template, response helpers, shared header/footer
+  page_main.clj       main page render + toggle handler
+  page_search.clj     search + add
   daily.clj           5am job: refresh + notifications
   server.clj          routes, middleware, http-kit server
   main.clj            -main
@@ -137,8 +138,9 @@ CREATE TABLE meta (
 );
 ```
 
-Migrations: a vector of `[version sql...]` in `db.clj`, applied in order on start against
-`PRAGMA user_version`. Same idea as grumpy.migrations, but without separate namespaces.
+Migrations: a vector of SQL statements in `db.clj`; `PRAGMA user_version` holds how many have
+been applied, the rest run in one transaction on start. Same idea as grumpy.migrations, but
+without separate namespaces.
 
 Episode states for rendering, computed in Clojure after one query per page:
 
@@ -146,8 +148,8 @@ Episode states for rendering, computed in Clojure after one query per page:
 - `available` — `air_date <= today` (UTC) and not watched
 - `upcoming`  — `air_date > today` or `air_date IS NULL` (TBA)
 
-Main page loads with three queries: user's shows (join user_show, order by touched_at desc),
-all their episodes (`WHERE show_id IN (...)`), all their watched rows. Group in memory.
+Main page: one query for the user's shows (join user_show, order by touched_at desc), then
+per show its episodes and the user's watched ids. The toggle handler reuses the per-show part.
 
 ## TMDB (`tmdb.clj`)
 
@@ -162,20 +164,24 @@ Bearer token from config. Endpoints:
   with a long cache header. Search results use the TMDB CDN URL directly (not cached).
 
 `import-show!` upserts `show` and all episodes (`INSERT ... ON CONFLICT DO UPDATE`), sets
-`finale` from `episode_count`, refreshes poster. Placeholder seasons (announced but
-`episode_count` 0, or every episode has no air date and no name) are skipped so they don't
-render as an empty row.
+`finale` on the highest episode number of each season, refreshes poster. Placeholder seasons
+(no episodes, or every episode has no air date and a blank/"TBD"/"Episode N" name) are skipped
+so they don't render as an empty row. Episodes TMDB no longer lists are deleted unless a
+`watched` or `notification` row refers to them.
+
+`import-show!` is used by both "add show" and the daily refresh. Requests are throttled to a
+few per second by a simple lock + sleep; TMDB limit is ~50 rps so this is only politeness.
 
 `status` is a fixed TMDB enum; `Returning Series` is sticky (True Detective still has it),
-so `in_production` and `next_episode_to_air` are the useful "anything coming" signals. Used by both "add show" and the daily refresh.
-Requests are throttled to a few per second by a simple lock + sleep; TMDB limit is ~50 rps
-so this is only politeness.
+so `in_production` and `next_episode_to_air` are the useful "anything coming" signals.
 
 ## Telegram (`telegram.clj`)
 
 - `post!` like grumpy: `https://api.telegram.org/bot<token>/<method>`, JSON body via http-kit client.
-- Updates via long polling `getUpdates`, a mount state running a loop on a virtual thread,
-  `offset` tracked in memory. No public URL needed in dev, no webhook setup in prod.
+- Updates via long polling `getUpdates`, a mount state (`auth/telegram-updates`) running a loop
+  on a virtual thread, `offset` tracked in memory. No public URL needed in dev, no webhook setup
+  in prod. Two processes polling the same bot conflict (Telegram returns 409), so with
+  `:forced-user` set the loop is not started.
 - The only command handled is `/start <nonce>`: upsert `user` by `tg_id`, set `login.user_id`,
   reply "Logged in, go back to the browser". Anything else gets a one-line help reply.
 - `send-message!` for notifications. Message text is plain (no markdown parse mode) so show
@@ -187,22 +193,24 @@ Flow:
 
 1. `GET /login` — creates `login` row with random nonce (16 bytes SecureRandom, base64url),
    renders page with a button `https://t.me/<bot>?start=<nonce>` and
-   `data-on-interval__duration.2s="@get('/login/poll?nonce=...')"`.
+   `data-on-interval__duration.2s="@get('/login/poll/<nonce>')"`.
 2. Bot receives `/start <nonce>`, fills in `login.user_id`.
-3. `GET /login/poll` — if `login.user_id` is set: create `session`, delete `login` row,
-   respond with `Set-Cookie: session=<token>` and a Datastar script `location.href='/'`.
-   Otherwise empty 204.
+3. `GET /login/poll/<nonce>` — if `login.user_id` is set: create `session`, delete `login` row,
+   respond with `Set-Cookie` and a `text/javascript` body `location.href = '/'`.
+   Otherwise empty 204. Unknown nonce redirects to `/login` the same way.
 4. `GET /logout` — deletes session row, clears cookie.
 
 Cookie attrs like grumpy: `path=/ httponly secure(prod) samesite=lax max-age=10y`.
 `wrap-session` looks up the token and attaches `:user` to the request. `wrap-require-user`
-redirects to `/login`. Dev convenience: `:forced-user` in config skips all this.
+redirects to `/login`. Dev convenience: `:forced-user <tg-id>` in config skips all this and
+creates the user on first request.
 Stale `login` rows are deleted by the daily job.
 
 ## Pages
 
-Server-rendered hiccup, Datastar for interactivity. Every interactive response is an SSE
-stream of `datastar-patch-elements` replacing an element by id.
+Server-rendered hiccup. Search and add are plain forms with redirects. Datastar is used only
+where a reload would hurt: toggling an episode (response is `text/html` of the show element,
+morphed in place by id) and the login poll.
 
 ### Main `GET /`
 
@@ -225,22 +233,28 @@ Sketch: poster left, title + one row of squares per season, upcoming date range 
   Collapsed to `Oct 2` when first = last, year appended when ≠ current year. No label when
   nothing is upcoming.
 - `POST /episodes/:id/toggle` — insert into `watched` or delete, bump `user_show.touched_at`,
-  respond with the patched show div.
-- Header: search input + "Add show" button linking to `/search?q=...` (as in sketch).
+  respond with the re-rendered show div. 404 unless the show is in the user's list.
+  `?shift=1` (sent as `evt.shiftKey` from the click expression) marks a range instead: an
+  unwatched episode plus every aired episode before it in `(season, episode)` order, or a
+  watched episode plus everything after it, unwatched.
+- Hover: each show div declares a signal `_hover<id>`; squares set it to `s01e04 Name` on
+  mouseenter and clear it on mouseleave, and the title has `data-text="$_hover<id> || 'Name'"`.
+  Underscore-prefixed signals are not sent with requests.
+- Header: search input + "Add show" button, a GET form to `/search?q=...` (as in sketch).
 
 ### Search `GET /search`
 
-Input bound to a signal, button `@get('/search/results')` patches the results list. Each result:
-poster (TMDB CDN), name, year, "Add" button `@post('/shows/add?id=<tmdb-id>')` which imports
-the show, inserts `user_show`, and redirects to `/` via script. Already-added shows show a
-"Added" label instead. No "remove show" yet.
+Plain page: results for `q`, each with poster (TMDB CDN), name, year, overview and a form
+button `POST /shows/<tmdb-id>/add` which imports the show (skipped if refreshed within a day),
+inserts `user_show`, and redirects to `/`. Already-added shows show an "Added" label instead.
+No "remove show" yet.
 
 ## Daily job (`daily.clj`)
 
-`core/timer` (java.util.Timer, mount state, same as tonsky.me) schedules `run!` at the next
-05:00 UTC and reschedules itself. On startup, if `meta.last_daily_run` is before today (UTC),
-run immediately (catch-up after downtime). `run!` is idempotent thanks to the
-`notification` table.
+`core/timer` (java.util.Timer, mount state, same as tonsky.me) schedules `run-daily!` at the
+next 05:00 UTC and reschedules itself. On startup, if `meta.last_daily_run` is before today
+(UTC), run immediately on a virtual thread (catch-up after downtime). `run-daily!` is idempotent
+thanks to the `notification` table and can be called from the REPL.
 
 Steps:
 
@@ -278,5 +292,10 @@ Static `/i/**` and `/posters/**` served with long `Cache-Control` and `?t=` cach
 
 ## Dev workflow
 
-`script/repl.sh` as now; `user/reload` via clj-reload with `before-ns-unload` stopping mount
-states (server, timer, telegram loop, datasource). `dev?` = hostname is localhost.
+`script/repl.sh` starts a socket REPL; `(user/start)` loads and starts everything,
+`(user/reload)` reloads changed namespaces via clj-reload (each stateful namespace has
+`before-ns-unload` stopping its mount state) and starts again, `(user/stop)` stops.
+`script/run.sh` runs the app for real. `dev?` = hostname starts with `http://localhost`.
+
+Data lives in `data/` (SQLite, posters), created on first start. Schema is created by
+`db/migrations` on start; to change it, append a statement and it runs once.

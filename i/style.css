@@ -1,0 +1,234 @@
+:root {
+  color-scheme: dark;
+  --bg: #14181C;
+  --fg: #f0f0f0;
+  --muted: #9a9a9a;
+  --input: #333;
+  --accent: #1a8cff;
+  --ep: #e0e0e0;
+  --ep-dim: #7a7a7a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 24px 64px;
+}
+
+a { color: var(--accent); }
+.muted { color: var(--muted); }
+
+/* Header */
+
+.header {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 48px;
+}
+
+.search {
+  flex: 1;
+  height: 44px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 22px;
+  background: var(--input);
+  color: var(--fg);
+  font: inherit;
+  outline: none;
+}
+
+.search:focus { box-shadow: 0 0 0 2px var(--accent); }
+
+.btn {
+  display: inline-block;
+  height: 44px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 22px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  line-height: 44px;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn:hover { filter: brightness(1.1); }
+
+.btn-small {
+  height: 32px;
+  line-height: 32px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+/* Shows */
+
+.show {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.poster { flex: 0 0 125px; }
+
+.poster img,
+.poster-empty {
+  display: block;
+  width: 125px;
+  aspect-ratio: 2 / 3;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--input);
+}
+
+.details { flex: 1; min-width: 0; }
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.2;
+  /* single line: hover swaps in episode title, and a wrap would shift the grid under the pointer */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title .ep-code {
+  font-variant-numeric: tabular-nums;
+
+  margin-right: 0.25em;
+}
+
+.title .ep-code:empty { display: none; }
+
+.subtitle {
+  margin: 2px 0 10px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.season {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0;
+}
+
+.ep {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: url("ep.png") no-repeat 0 0 / 96px 64px;
+  cursor: pointer;
+}
+
+/* 36px cells from ep.png, a 3x2 atlas at 2x: watched / unwatched / upcoming, second row hovered */
+.ep.watched   { background-position: 0 0; }
+.ep.available { background-position: -32px 0; }
+.ep.upcoming  { background-position: -64px 0; cursor: default; }
+
+.ep.watched:hover   { background-position: 0 -32px; }
+.ep.available:hover { background-position: -32px -32px; }
+.ep.upcoming:hover  { background-position: -64px -32px; }
+
+.upcoming-label {
+  margin-left: 6px;
+  font-size: 14px;
+  color: #ccc;
+}
+
+.empty {
+  color: var(--muted);
+  text-align: center;
+  margin: 64px 0;
+}
+
+/* Search results */
+
+.result {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.result-poster { flex: 0 0 64px; }
+
+.result-poster img,
+.result-poster .poster-empty {
+  display: block;
+  width: 64px;
+  aspect-ratio: 2 / 3;
+  border-radius: 3px;
+  object-fit: cover;
+  background: var(--input);
+}
+
+.result-details { flex: 1; min-width: 0; }
+
+.result-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.result-overview {
+  margin: 4px 0 8px;
+  font-size: 14px;
+  color: #ccc;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Login */
+
+.login {
+  text-align: center;
+  margin-top: 96px;
+}
+
+.login h1 { font-size: 40px; margin-bottom: 8px; }
+.login .btn { margin: 24px 0 16px; }
+
+.footer {
+  margin-top: 64px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.footer a { color: var(--muted); }
+
+@media (max-width: 520px) {
+  .page { padding: 24px 12px 48px; }
+  .header { margin-bottom: 32px; gap: 8px; }
+  /* poster + title/subtitle as a header block, seasons below spanning full width */
+  .show {
+    display: grid;
+    grid-template-columns: 100px minmax(0, 1fr);
+    /* title row hugs its content, subtitle row absorbs the rest of the poster height */
+    grid-template-rows: max-content 1fr;
+    gap: 0 14px;
+  }
+  .details { display: contents; }
+  .poster { grid-column: 1; grid-row: 1 / 3; margin-bottom: 12px; }
+  .poster img, .poster-empty { width: 100px; }
+  .title { grid-column: 2; grid-row: 1; font-size: 22px; }
+  .subtitle { grid-column: 2; grid-row: 2; }
+  .season { grid-column: 1 / -1; }
+}
