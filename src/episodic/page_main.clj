@@ -47,22 +47,28 @@
     "Pilot"             "Pilot"
     status))
 
-(defn years-label [{:keys [first_air_date last_air_date status]}]
+(defn years-label
+  "Returns [label ended?], ended? is false when there is no end year"
+  [{:keys [first_air_date last_air_date status]}]
   (when-some [from (some-> first_air_date core/parse-date .getYear)]
     (let [running? (contains? #{"Returning Series" "In Production" "Planned"} status)
           to       (some-> last_air_date core/parse-date .getYear)]
       (cond
-        running?   (str from "–")
-        (= from to) (str from)
-        (nil? to)  (str from)
-        :else      (str from "–" to)))))
+        running?    [(str from "–") false]
+        (= from to) [(str from) true]
+        (nil? to)   [(str from) false]
+        :else       [(str from "–" to) true]))))
 
 (defn subtitle [show]
-  (->> [(:network show)
-        (years-label show)
-        (when (:status show) (status-label show))]
-    (remove str/blank?)
-    (str/join " • ")))
+  (let [[years ended?] (years-label show)
+        status         (when (:status show) (status-label show))
+        ;; no end year: "2022– Airing" instead of "2022– • Airing"
+        years+status   (if (and years status (not ended?))
+                         (str years status)
+                         (str/join " • " (remove str/blank? [years status])))]
+    (->> [(:network show) years+status]
+      (remove str/blank?)
+      (str/join " • "))))
 
 (defn episode-code [ep]
   (format "s%02de%02d" (:season ep) (:episode ep)))
