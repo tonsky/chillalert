@@ -87,7 +87,9 @@ a { color: var(--accent); }
   margin-bottom: 32px;
 }
 
-.poster { flex: 0 0 125px; }
+.poster { flex: 0 0 125px; position: relative; }
+
+.season-poster { position: absolute; inset: 0; }
 
 .poster img,
 .poster-empty {

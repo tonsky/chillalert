@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [episodic.core :as core]
    [episodic.db :as db]
+   [episodic.tmdb :as tmdb]
    [episodic.web :as web]))
 
 ;; Data
@@ -15,6 +16,13 @@
 (defn user-show [user-id show-id]
   (db/q1 "SELECT show.* FROM show JOIN user_show ON user_show.show_id = show.id
           WHERE user_show.user_id = ? AND show.id = ?" user-id show-id))
+
+(defn custom-season-posters
+  "Season numbers whose poster differs from the show's, in order"
+  [show]
+  (->> (db/q "SELECT season, poster_path FROM season WHERE show_id = ? ORDER BY season" (:id show))
+    (filter #(tmdb/custom-season-poster? (:poster_path show) (:poster_path %)))
+    (map :season)))
 
 (defn show-episodes [show-id]
   (db/q "SELECT * FROM episode WHERE show_id = ? ORDER BY season, episode" show-id))
@@ -74,9 +82,9 @@
   (format "s%02de%02d" (:season ep) (:episode ep)))
 
 (defn hover-signals
-  "[code-signal name-signal], leading underscore: not sent along with requests"
+  "[code-signal name-signal season-signal], leading underscore: not sent along with requests"
   [show]
-  [(str "$_hoverCode" (:id show)) (str "$_hoverName" (:id show))])
+  [(str "$_hoverCode" (:id show)) (str "$_hoverName" (:id show)) (str "$_hoverSeason" (:id show))])
 
 (defn drag-signals
   "[from-signal to-signal from-id-signal to-id-signal]: indexes of the anchor and the current episode
@@ -105,15 +113,17 @@
         upcoming (->> (map vector episodes states)
                    (filter #(= :upcoming (second %)))
                    (map first))
-        [code-signal name-signal] (hover-signals show)
+        [code-signal name-signal season-signal] (hover-signals show)
         [from-signal to-signal from-id-signal to-id-signal] (drag-signals show)
-        ;; while hovering, show title becomes episode title. Skipped on touch devices:
-        ;; the synthesized mouseenter would swap the title before the click lands
+        ;; while hovering, show title becomes episode title and poster becomes the season's, if it has
+        ;; its own. Skipped on touch devices: the synthesized mouseenter would swap the title before
+        ;; the click lands
         hover-enter (fn [ep]
                       (str "matchMedia('(hover: hover)').matches && ("
                         code-signal " = " (json/generate-string (episode-code ep)) ", "
-                        name-signal " = " (json/generate-string (or (:name ep) "")) ")"))
-        hover-leave (str code-signal " = '', " name-signal " = ''")
+                        name-signal " = " (json/generate-string (or (:name ep) "")) ", "
+                        season-signal " = " (:season ep) ")"))
+        hover-leave (str code-signal " = '', " name-signal " = '', " season-signal " = 0")
         hover    (fn [ep]
                    {"data-on:mouseenter" (hover-enter ep)
                     "data-on:mouseleave" hover-leave})
@@ -144,15 +154,15 @@
      (when-some [label (upcoming-label upcoming)]
        [:span.upcoming-label label])]))
 
-(defn render-show [show episodes watched]
+(defn render-show [show episodes watched season-posters]
   (let [today   (str (core/today))
         seasons (partition-by :season episodes)
-        [code-signal name-signal] (hover-signals show)
+        [code-signal name-signal season-signal] (hover-signals show)
         [from-signal to-signal from-id-signal to-id-signal] (drag-signals show)
         offsets (reductions + 0 (map count seasons))]
     [:div.show {:id (str "show-" (:id show))
                 "data-signals" (str "{" (subs code-signal 1) ": '', " (subs name-signal 1) ": '', "
-                                 (subs from-signal 1) ": -1, " (subs to-signal 1) ": -1, "
+                                 (subs season-signal 1) ": 0, " (subs from-signal 1) ": -1, " (subs to-signal 1) ": -1, "
                                  (subs from-id-signal 1) ": 0, " (subs to-id-signal 1) ": 0}")
                 ;; a drag ends wherever the mouse is released, the current episode is the range end.
                 ;; Same episode as the anchor: nothing to do here, the click that follows toggles it
@@ -162,8 +172,14 @@
                                             from-signal " = -1, " to-signal " = -1)")}
      [:div.poster
       (if (:poster_path show)
-        [:img {:src (str "/posters/" (:id show) ".jpg?t=" (:updated_at show)) :alt ""}]
-        [:div.poster-empty])]
+        [:img {:src (str "/posters/" (tmdb/poster-name (:id show) nil) "?t=" (:updated_at show)) :alt ""}]
+        [:div.poster-empty])
+      ;; layered over the show poster while an episode of that season is hovered. Always in the DOM
+      ;; so they are loaded up front and the swap is instant
+      (for [n season-posters]
+        [:img.season-poster {:src (str "/posters/" (tmdb/poster-name (:id show) n) "?t=" (:updated_at show))
+                             :alt ""
+                             "data-show" (str season-signal " === " n)}])]
      [:div.details
       [:h2.title
        [:span.ep-code {"data-text" code-signal}]
@@ -174,7 +190,7 @@
         (render-season show season watched today offset))]]))
 
 (defn render-show-for [user-id show]
-  (render-show show (show-episodes (:id show)) (watched-ids user-id (:id show))))
+  (render-show show (show-episodes (:id show)) (watched-ids user-id (:id show)) (custom-season-posters show)))
 
 (defn index-page [user]
   (let [shows (user-shows (:id user))]

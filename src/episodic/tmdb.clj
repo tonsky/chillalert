@@ -89,8 +89,13 @@
       (empty? episodes)
       (every? #(and (str/blank? (:air_date %)) (placeholder-name? (:name %))) episodes))))
 
-(defn- download-poster! [id poster-path]
-  (let [file (io/file core/storage "posters" (str id ".jpg"))
+(defn poster-name
+  "Show poster: 123.jpg. Season poster: 123-s2.jpg"
+  [show-id season]
+  (str show-id (when season (str "-s" season)) ".jpg"))
+
+(defn- download-poster! [name poster-path]
+  (let [file (io/file core/storage "posters" name)
         {:keys [status body error]} @(http/request {:method :get
                                                     :url    (poster-url poster-path)
                                                     :timeout 30000
@@ -98,18 +103,34 @@
     (if (and (nil? error) (= 200 status))
       (with-open [out (io/output-stream file)]
         (.write out ^bytes body))
-      (core/log "Failed to download poster for" id poster-path status error))))
+      (core/log "Failed to download poster" name poster-path status error))))
 
-(defn poster-file ^File [id]
-  (let [file (io/file core/storage "posters" (str id ".jpg"))]
+(defn poster-file ^File [name]
+  (let [file (io/file core/storage "posters" name)]
     (when (.exists file)
       file)))
+
+(defn- ensure-poster!
+  "Downloads when the path changed since last import or the file went missing"
+  [name poster-path existing-path]
+  (when poster-path
+    (when (or (not= poster-path existing-path)
+            (nil? (poster-file name)))
+      (download-poster! name poster-path))))
+
+(defn custom-season-poster?
+  "Seasons often reuse the show poster, only a distinct one is worth showing"
+  [show-poster-path season-poster-path]
+  (and (some? season-poster-path) (not= show-poster-path season-poster-path)))
 
 (defn import-show!
   "Fetches show from TMDB and upserts show + episodes. Returns show id."
   [id]
   (let [show     (fetch-show id)
         existing (db/q1 "SELECT poster_path FROM show WHERE id = ?" id)
+        existing-seasons (into {}
+                           (map (juxt :season :poster_path))
+                           (db/q "SELECT season, poster_path FROM season WHERE show_id = ?" id))
         now      (core/now)
         seasons  (remove placeholder-season? (:seasons show))]
     (core/log "Importing show" id (:name show) "with" (count seasons) "seasons")
@@ -131,6 +152,14 @@
       (not-empty (:last_air_date show))
       (-> show :next_episode_to_air :air_date not-empty)
       now)
+    (doseq [season seasons]
+      (db/exec!
+        "INSERT INTO season (show_id, season, poster_path) VALUES (?, ?, ?)
+         ON CONFLICT (show_id, season) DO UPDATE SET poster_path = excluded.poster_path"
+        id (:season_number season) (:poster_path season)))
+    (doseq [s (keys existing-seasons)
+            :when (not (contains? (set (map :season_number seasons)) s))]
+      (db/exec! "DELETE FROM season WHERE show_id = ? AND season = ?" id s))
     (doseq [season seasons
             :let [last-ep (->> (:episodes season) (map :episode_number) (reduce max 0))]
             ep     (:episodes season)]
@@ -156,8 +185,9 @@
              AND NOT EXISTS (SELECT 1 FROM watched WHERE episode_id = ?)
              AND NOT EXISTS (SELECT 1 FROM notification WHERE episode_id = ?)"
           (:id ep) (:id ep) (:id ep))))
-    (when-some [poster-path (:poster_path show)]
-      (when (or (not= poster-path (:poster_path existing))
-              (nil? (poster-file id)))
-        (download-poster! id poster-path)))
+    (ensure-poster! (poster-name id nil) (:poster_path show) (:poster_path existing))
+    (doseq [season seasons
+            :let [n (:season_number season)]
+            :when (custom-season-poster? (:poster_path show) (:poster_path season))]
+      (ensure-poster! (poster-name id n) (:poster_path season) (get existing-seasons n)))
     id))

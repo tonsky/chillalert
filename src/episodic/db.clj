@@ -79,6 +79,13 @@
    "CREATE TABLE meta (
       key          TEXT PRIMARY KEY,
       value        TEXT
+    )"
+
+   "CREATE TABLE season (
+      show_id      INTEGER NOT NULL REFERENCES show(id),
+      season       INTEGER NOT NULL,
+      poster_path  TEXT,
+      PRIMARY KEY (show_id, season)
     )"])
 
 (def opts

@@ -38,9 +38,10 @@
       (file-response (io/file "i" path)))))
 
 (defn poster-handler [req]
-  (let [[name] (:path-params req)
-        id     (web/parse-id (second (re-matches #"(\d+)\.jpg" (str name))))]
-    (file-response (some-> id tmdb/poster-file))))
+  (let [[name] (:path-params req)]
+    (file-response
+      (when (re-matches #"\d+(-s\d+)?\.jpg" (str name))
+        (tmdb/poster-file name)))))
 
 (def routes
   (router/routes
