@@ -1,0 +1,27 @@
+name: Build and deploy
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths:
+      - '.github/workflows/**'
+      - 'src/**'
+      - deps.edn
+
+jobs:  
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: |
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> $GITHUB_ENV
+          echo "$JAVA_HOME_21_X64/bin" >> $GITHUB_PATH
+
+      - name: Setup Clojure
+        uses: DeLaGuardo/setup-clojure@13.1
+        with:
+          cli: latest
+          lein: latest

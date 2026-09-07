@@ -1,0 +1,13 @@
+{:deps
+ {org.clojure/clojure {:mvn/version "1.12.6"}
+  io.github.tonsky/clojure-plus {:mvn/version "1.7.2"}}
+ :aliases
+ {:dev
+  {:extra-paths ["dev" "test"]
+   :extra-deps
+   {io.github.tonsky/clj-reload {:mvn/version "1.0.0"}}
+   :jvm-opts ["-ea"
+              "-Djdk.attach.allowAttachSelf"
+              "-XX:+UnlockDiagnosticVMOptions"
+              "-XX:+DebugNonSafepoints"
+              "-XX:+EnableDynamicAgentLoading"]}}}

@@ -1,0 +1,2 @@
+- Use as little dependencies as possible
+- Consult code practices from ~/ws/grumpy, ~/ws/tonsky.me, ~/ws/allekinos to see how we tend to write web apps
