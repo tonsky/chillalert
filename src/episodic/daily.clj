@@ -75,16 +75,14 @@
     ep))
 
 (defn format-message [episodes]
-  (str "New episodes are out:\n"
+  (str "New episodes are out:\n\n"
     (str/join "\n"
       (for [ep episodes]
-        (str "  - "
-          (str/join " / "
-            (remove nil?
-              [(:show_name ep)
-               (page-main/episode-code ep)
-               (:name ep)
-               (when (= 1 (:finale ep)) "Season finale")])))))))
+        (str
+          "— " (:show_name ep)
+          " "  (page-main/episode-code ep)
+          " “" (:name ep) "”"
+          (when (= 1 (:finale ep)) " — Season finale!"))))))
 
 (defn notify-user! [user date]
   (let [episodes (episodes-to-notify (:id user) date)]
@@ -148,3 +146,22 @@
 
 (defn before-ns-unload []
   (mount/stop #'job))
+
+(comment
+  (defn preview-unwatched!
+    "Sends user a message with ALL their unwatched aired episodes, ignoring notify? rules
+     and not recording anything in notification table. To check how the message looks like"
+    [user-id]
+    (let [user     (db/q1 "SELECT * FROM user WHERE id = ?" user-id)
+          episodes (db/q "SELECT episode.*, show.name AS show_name FROM episode
+                          JOIN show ON show.id = episode.show_id
+                          JOIN user_show ON user_show.show_id = episode.show_id
+                          WHERE user_show.user_id = ?
+                            AND episode.air_date IS NOT NULL
+                            AND episode.air_date <= ?
+                            AND episode.id NOT IN (SELECT episode_id FROM watched WHERE user_id = ?)
+                          ORDER BY show.name, episode.season, episode.episode"
+                     user-id (str (core/today)) user-id)]
+      (telegram/send-message! (:tg_id user) (format-message episodes))))
+
+  (preview-unwatched! 1))
