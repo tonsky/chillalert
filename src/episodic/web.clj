@@ -1,8 +1,6 @@
 (ns episodic.web
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
-   [episodic.core :as core]
    [hiccup2.core :as html]))
 
 (defn timestamp-url [url]
@@ -14,7 +12,7 @@
 (defn render [hiccup]
   (str (html/html {:mode :html} hiccup)))
 
-(defn page [{:keys [title]} & content]
+(defn page [{:keys [title topbar]} & content]
   (str "<!DOCTYPE html>\n"
     (render
       [:html {:lang "en"}
@@ -27,6 +25,7 @@
         [:link {:rel "apple-touch-icon" :href (timestamp-url "/apple-touch-icon.png") :sizes "180x180"}]
         [:script {:type "module" :src (timestamp-url "/datastar_1.0.3.js")}]]
        [:body
+        topbar
         [:div.page content]]])))
 
 (defn html-response
@@ -61,8 +60,20 @@
    :headers {"Content-Type" "text/plain; charset=UTF-8"}
    :body    message})
 
+(defn topbar
+  "Full-width bar: logo on the left, Add show / History / Log out links on the right"
+  [_user]
+  [:div.topbar
+   [:div.topbar-inner
+    [:a.brand {:href "/"}
+     [:img.logo {:src (timestamp-url "/logo.png") :alt "Logo" :width "190" :height "40"}]]
+    [:div.spacer]
+    [:a {:href "/search"} "Add show"]
+    [:a {:href "/history"} "History"]
+    [:a {:href "/logout"} "Log out"]]])
+
 (defn header
-  "Search input + Add show button, shared by main and search pages"
+  "Search input + Add show button, used by the search page"
   [query]
   [:form.header {:method "get" :action "/search"}
    [:input.search {:type "text" :name "q" :value query :placeholder "Search shows" :autocomplete "off"}]

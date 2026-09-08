@@ -46,14 +46,18 @@
 
 ;; Labels
 
-(defn status-label [{:keys [status next_air_date]}]
-  (case status
-    "Returning Series"  (if next_air_date "Airing" "Returning")
-    "Ended"             "Ended"
-    "Canceled"          "Canceled"
-    ("In Production" "Planned") "Upcoming"
-    "Pilot"             "Pilot"
-    status))
+(defn airing?
+  "Last season has at least one episode already out and at least one still upcoming"
+  [episodes today]
+  (let [season (last (partition-by :season episodes))
+        aired? #(and (:air_date %) (<= (compare (:air_date %) today) 0))]
+    (boolean (and (some aired? season) (some (complement aired?) season)))))
+
+(defn status-label [{:keys [status]} airing?]
+  (cond
+    (and (= "Returning Series" status) airing?) "Airing"
+    (= "Returning Series" status) "Returning"
+    :else status))
 
 (defn years-label
   "Returns [label ended?], ended? is false when there is no end year"
@@ -67,9 +71,9 @@
         (nil? to)   [(str from) false]
         :else       [(str from "–" to) true]))))
 
-(defn subtitle [show]
+(defn subtitle [show episodes today]
   (let [[years ended?] (years-label show)
-        status         (when (:status show) (status-label show))
+        status         (when (:status show) (status-label show (airing? episodes today)))
         ;; no end year: "2022– Airing" instead of "2022– • Airing"
         years+status   (if (and years status (not ended?))
                          (str years status)
@@ -140,8 +144,8 @@
                     "data-class:hovered" (str from-signal " >= 0 && Math.min(" from-signal ", " to-signal ") <= " i
                                            " && " i " <= Math.max(" from-signal ", " to-signal ")")})
         n        (count episodes)
-        ;; sprite has a distinct shape for the first, middle and last episode of a season
-        position (fn [i] (cond (zero? i) "first" (= i (dec n)) "last" :else "middle"))]
+        ;; sprite has a distinct shape for the first, middle, last and only episode of a season
+        position (fn [i] (cond (= n 1) "single" (zero? i) "first" (= i (dec n)) "last" :else "middle"))]
     [:div.season
      (for [[i ep state] (map vector (range) episodes states)]
        (if (= :upcoming state)
@@ -185,7 +189,7 @@
        [:span.ep-code {"data-text" code-signal}]
        [:span {"data-text" (str code-signal " ? " name-signal " : " (json/generate-string (:name show)))}
         (:name show)]]
-      [:div.subtitle (subtitle show)]
+      [:div.subtitle (subtitle show episodes today)]
       (for [[season offset] (map vector seasons offsets)]
         (render-season show season watched today offset))]]))
 
@@ -194,13 +198,11 @@
 
 (defn index-page [user]
   (let [shows (user-shows (:id user))]
-    (web/page {}
-      (web/header nil)
+    (web/page {:topbar (web/topbar user)}
       (if (empty? shows)
-        [:p.empty "No shows yet. Search for one above."]
+        [:p.empty "No shows yet. Press “Add show” to find one."]
         (for [show shows]
-          (render-show-for (:id user) show)))
-      (web/footer user))))
+          (render-show-for (:id user) show))))))
 
 ;; Handlers
 

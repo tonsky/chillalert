@@ -21,13 +21,41 @@ body {
 }
 
 .page {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 48px 24px 64px;
+  width: min(100% - 20px, 640px);
+  margin: 20px auto 0;
+  padding: 0 0 64px;
 }
 
 a { color: var(--accent); }
 .muted { color: var(--muted); }
+
+/* Topbar */
+
+.topbar {
+  background: #000;
+}
+
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  width: min(100% - 20px, 640px);
+  height: 70px;
+  margin: 0 auto;
+  padding: 15px 0;
+}
+
+.topbar-inner .spacer { flex: 1; }
+
+.topbar-inner a {
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.topbar-inner a:hover { text-decoration: underline; }
+
+.brand { margin-left: -2px; }
+.logo { display: block; }
 
 /* Header */
 
@@ -146,13 +174,13 @@ a { color: var(--accent); }
   height: 40px;
   padding: 0;
   border: none;
-  background: url("ep.png") no-repeat 0 0 / 288px 80px;
+  background: url("ep.png") no-repeat 0 0 / 384px 80px;
   cursor: pointer;
   --group: 0;
   --col: 1;
-  /* 32x40px cells from ep.png, a 9x2 atlas at 2x. Columns: 3 per state (watched / available / upcoming),
-     one each for the first, middle and last episode of a season. Second row is hovered */
-  background-position: calc((var(--group) * 3 + var(--col)) * -32px) 0;
+  /* 32x40px cells from ep.png, a 12x2 atlas at 2x. Columns: 4 per state (watched / available / upcoming),
+     one each for the first, middle, last and single episode of a season. Second row is hovered */
+  background-position: calc((var(--group) * 4 + var(--col)) * -32px) 0;
 }
 
 .ep.watched   { --group: 0; }
@@ -162,6 +190,7 @@ a { color: var(--accent); }
 .ep.first  { --col: 0; }
 .ep.middle { --col: 1; }
 .ep.last   { --col: 2; }
+.ep.single { --col: 3; }
 
 /* .hovered: part of a range being dragged, see render-season */
 .ep:hover, .ep.hovered { background-position-y: -40px; }
@@ -237,8 +266,9 @@ a { color: var(--accent); }
 .footer a { color: var(--muted); }
 
 @media (max-width: 520px) {
-  .page { padding: 24px 12px 48px; }
+  .page { padding: 24px 0 48px; }
   .header { margin-bottom: 32px; gap: 8px; }
+  .topbar { margin-bottom: 32px; }
   /* poster + title/subtitle as a header block, seasons below spanning full width */
   .show {
     display: grid;

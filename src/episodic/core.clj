@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [mount.core :as mount])
   (:import
-   [java.time Instant LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime]
+   [java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime]
    [java.time.format DateTimeFormatter]
    [java.util Date Locale Timer TimerTask]))
 

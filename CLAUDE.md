@@ -1,3 +1,4 @@
 - Use as little dependencies as possible
 - Consult code practices from ~/ws/grumpy, ~/ws/tonsky.me, ~/ws/allekinos to see how we tend to write web apps
 - An nREPL server is running on port 5556 (started via `script/nrepl.sh`, port also in `.nrepl-port`). Use the `clojure-eval` skill to evaluate code, reload edited namespaces and check that they compile, instead of restarting the app
+- Use `clj-kondo --lint src` to find and fix warnings
