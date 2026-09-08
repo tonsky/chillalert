@@ -45,8 +45,12 @@ jobs:
       - name: Deploy
         run: |
           rsync -az --delete i/ chillalert@chill.tonsky.me:i/
-          scp target/chillalert.jar chillalert@chill.tonsky.me:
+          scp target/chillalert.jar chillalert@chill.tonsky.me:chillalert.jar.tmp
 
       - name: Restart
         run: |
-          ssh chillalert@chill.tonsky.me "kill \$(systemctl show --property MainPID --value chillalert)"
+          ssh chillalert@chill.tonsky.me "mv chillalert.jar.tmp chillalert.jar && sudo -n systemctl restart chillalert"
+
+      - name: Health check
+        run: |
+          ssh chillalert@chill.tonsky.me "timeout 60 bash -c 'until curl -fsS -o /dev/null localhost:7100/i/style.css; do sleep 2; done'"
