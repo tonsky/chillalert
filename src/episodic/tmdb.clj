@@ -46,15 +46,26 @@
 
 ;; Search
 
-(defn search [query]
+(defn search
+  "Top results enriched with a details request each: search alone has no
+   network, dates, status or season/episode counts"
+  [query]
   (let [{:keys [results]} (get-json "/search/tv" {:query query})]
-    (for [r results
-          :let [year (some-> (:first_air_date r) core/parse-date .getYear)]]
-      {:id          (:id r)
-       :name        (:name r)
-       :year        year
-       :overview    (:overview r)
-       :poster-url  (poster-url (:poster_path r))})))
+    (->> (take 10 results)
+      (pmap
+        (fn [r]
+          (let [details (get-json (str "/tv/" (:id r)))]
+            {:id             (:id r)
+             :name           (:name r)
+             :overview       (:overview r)
+             :poster-url     (poster-url (:poster_path r))
+             :network        (-> details :networks first :name)
+             :status         (:status details)
+             :first_air_date (not-empty (:first_air_date details))
+             :last_air_date  (not-empty (:last_air_date details))
+             :seasons        (:number_of_seasons details)
+             :episodes       (:number_of_episodes details)})))
+      (doall))))
 
 ;; Import
 

@@ -12,7 +12,7 @@
 (defn render [hiccup]
   (str (html/html {:mode :html} hiccup)))
 
-(defn page [{:keys [title topbar]} & content]
+(defn page [{:keys [title topbar class]} & content]
   (str "<!DOCTYPE html>\n"
     (render
       [:html {:lang "en"}
@@ -26,7 +26,7 @@
         [:script {:type "module" :src (timestamp-url "/datastar_1.0.3.js")}]]
        [:body
         topbar
-        [:div.page content]]])))
+        [:div.page {:class class} content]]])))
 
 (defn html-response
   ([body]
@@ -61,31 +61,30 @@
    :body    message})
 
 (defn topbar
-  "Full-width bar: logo on the left, Add show / History / Log out links on the right"
-  [_user]
-  [:div.topbar
-   [:div.topbar-inner
-    [:a.brand {:href "/"}
-     [:img.logo {:src (timestamp-url "/logo.png") :alt "Logo" :width "180" :height "40"}]]
-    [:div.spacer]
-    [:a {:href "/search"} "add show"]
-    [:a {:href "/history"} "history"]
-    [:a {:href "/logout"} "log out"]]])
+  "Full-width bar: logo on the left, Add show / History / Log out links on the right.
+   The current page's link is underlined and not clickable"
+  ([user]
+   (topbar user nil))
+  ([_user current]
+   (let [link (fn [href key label]
+                (if (= key current)
+                  [:span.current label]
+                  [:a {:href href} label]))]
+     [:div.topbar
+      [:div.topbar-inner
+       [:a.brand {:href "/"}
+        [:img.logo {:src (timestamp-url "/logo.png") :alt "Logo" :width "180" :height "40"}]]
+       [:div.spacer]
+       (link "/search" :search "add show")
+       (link "/history" :history "history")
+       [:a {:href "/logout"} "log out"]]])))
 
 (defn header
-  "Search input + Add show button, used by the search page"
+  "Search input + button, used by the search page"
   [query]
   [:form.header {:method "get" :action "/search"}
    [:input.search {:type "text" :name "q" :value query :placeholder "Search shows" :autocomplete "off"}]
-   [:button.btn {:type "submit"} "Add show"]])
-
-(defn footer [user]
-  [:div.footer
-   (when user
-     (list
-       [:span.muted (or (:name user) (some->> (:tg_username user) (str "@")) "Logged in")]
-       " · "
-       [:a.muted {:href "/logout"} "Log out"]))])
+   [:button.btn {:type "submit"} "Search"]])
 
 (defn path-param [req idx]
   (nth (:path-params req) idx nil))

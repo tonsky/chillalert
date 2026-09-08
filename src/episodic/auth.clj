@@ -128,9 +128,9 @@
 ;; Browser side
 
 (defn login-page [nonce]
-  (web/page {:title "Log in"}
+  (web/page {:title "Log in" :class "center"}
     [:div.login {"data-on-interval__duration.2s" (str "@get('/login/poll/" nonce "')")}
-     [:h1 "Episodic"]
+     [:img.logo {:src (web/timestamp-url "/logo.png") :alt "Episodic" :width "180" :height "40"}]
      [:p "Track TV shows, get a Telegram message when a new episode is out."]
      [:a.btn {:href (str "https://t.me/" @telegram/bot-username "?start=" nonce)
               :target "_blank"}

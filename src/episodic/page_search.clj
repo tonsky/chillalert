@@ -3,47 +3,59 @@
    [clojure.string :as str]
    [episodic.core :as core]
    [episodic.db :as db]
+   [episodic.page-main :as page-main]
    [episodic.tmdb :as tmdb]
    [episodic.web :as web]))
 
 (defn added-show-ids [user-id]
   (into #{} (map :show_id) (db/q "SELECT show_id FROM user_show WHERE user_id = ?" user-id)))
 
-(defn render-result [result added?]
-  [:div.result
-   [:div.result-poster
+(defn result-subtitle
+  "Main page subtitle (network • years • status) plus season and episode counts"
+  [result]
+  (let [count-label (fn [n word] (when (and n (pos? n)) (str n " " word (when (not= 1 n) "s"))))]
+    (->> [(page-main/subtitle result nil (str (core/today)))
+          (count-label (:seasons result) "season")
+          (count-label (:episodes result) "episode")]
+      (remove str/blank?)
+      (str/join " • "))))
+
+(defn render-result
+  "Same structure as page-main/render-show, with the episode grid replaced
+   by the show overview and an Add button"
+  [result added?]
+  [:div.show
+   [:div.poster
     (if-some [url (:poster-url result)]
       [:img {:src url :alt "" :loading "lazy"}]
       [:div.poster-empty])]
-   [:div.result-details
-    [:div.result-title
-     (:name result)
-     (when-some [year (:year result)]
-       [:span.muted (str " (" year ")")])]
+   [:div.details
+    [:h2.title (:name result)]
+    [:div.subtitle (result-subtitle result)]
     (when-not (str/blank? (:overview result))
-      [:div.result-overview (:overview result)])
+      [:div.overview (:overview result)])
     (if added?
-      [:span.muted "Added"]
-      [:form {:method "post" :action (str "/shows/" (:id result) "/add")}
-       [:button.btn.btn-small {:type "submit"} "Add to my shows"]])]])
+      [:span.add.muted "Added"]
+      [:form.add {:method "post" :action (str "/shows/" (:id result) "/add")}
+       [:button.btn.btn-small {:type "submit"} "Add"]])]])
 
 (defn search-page [user query]
   (let [results (when-not (str/blank? query)
                   (tmdb/search query))
         added   (added-show-ids (:id user))]
-    (web/page {:title (if (str/blank? query) "Search" query)}
+    (web/page {:title  (if (str/blank? query) "Search" query)
+               :topbar (web/topbar user :search)}
       (web/header query)
       (cond
         (str/blank? query)
-        [:p.empty "Type a show name and press “Add show”."]
+        nil
 
         (empty? results)
         [:p.empty "Nothing found for “" query "”."]
 
         :else
         (for [result results]
-          (render-result result (contains? added (:id result)))))
-      (web/footer user))))
+          (render-result result (contains? added (:id result))))))))
 
 (defn handle-search [req]
   (let [query (some-> (get-in req [:query-params "q"]) str/trim)]
