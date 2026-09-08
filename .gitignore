@@ -9,5 +9,4 @@ target
 .portal/
 .clj-kondo/.cache/
 **/__pycache__/
-config.edn
 data/

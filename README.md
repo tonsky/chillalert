@@ -7,7 +7,7 @@ See `doc/PLAN.md` for what it does and `doc/ARCHITECTURE.md` for how.
 
 ## Running
 
-`config.edn` in the project root (gitignored):
+`data/config.edn` (gitignored):
 
 ```clojure
 {:hostname        "http://localhost:8080"
@@ -19,11 +19,11 @@ See `doc/PLAN.md` for what it does and `doc/ARCHITECTURE.md` for how.
 
 ```bash
 ./script/run.sh     # runs the app on :8080
-./script/repl.sh    # socket REPL on :5555; then (start), (reload), (stop)
+./script/repl.sh    # socket REPL on :5555
 ./script/nrepl.sh   # same, but nREPL on :5556
 ```
 
-Data is stored in `data/` (SQLite database and cached posters), created on first start.
+`data/` also holds the SQLite database and cached posters, created on first start.
 
 ## License
 

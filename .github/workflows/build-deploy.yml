@@ -7,6 +7,9 @@ on:
     paths:
       - '.github/workflows/**'
       - 'src/**'
+      - 'package/**'
+      - 'script/**'
+      - 'i/**'
       - deps.edn
 
 jobs:  
@@ -24,4 +27,26 @@ jobs:
         uses: DeLaGuardo/setup-clojure@13.1
         with:
           cli: latest
-          lein: latest
+
+      - name: Package
+        run: ./script/package.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jar
+          path: 'target/*.jar'
+
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_KEY }}
+          known_hosts: ${{ secrets.SSH_KNOWN_HOSTS }}
+
+      - name: Deploy
+        run: |
+          rsync -az --delete i/ chillalert@chill.tonsky.me:i/
+          scp target/chillalert.jar chillalert@chill.tonsky.me:
+
+      - name: Restart
+        run: |
+          ssh chillalert@chill.tonsky.me "kill \$(systemctl show --property MainPID --value chillalert)"

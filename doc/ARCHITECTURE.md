@@ -4,8 +4,8 @@ Companion to PLAN.md.
 
 Decisions: all times are UTC (5am job, "yesterday", "today" for availability). Season 0
 (specials) is never imported. Episodes without air date are shown as upcoming and render
-as `TBA` in the date range. No "remove show" for now. `config.edn` stays in the repo root,
-gitignored.
+as `TBA` in the date range. No "remove show" for now. `config.edn` lives in `data/`,
+alongside the database, gitignored.
 
 ## Dependencies
 
@@ -29,8 +29,8 @@ id) and `text/javascript` responses (executed), which is all this app needs.
 ## Layout
 
 ```
-config.edn            hostname, tg token, tmdb token (gitignored)
 data/                 gitignored runtime dir
+  config.edn          hostname, tg token, tmdb token
   chillalert.sqlite
   posters/<show-id>.jpg
 i/                    static: style.css, datastar_1.0.3.js, favicon

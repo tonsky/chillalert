@@ -9,17 +9,17 @@
    [java.time.format DateTimeFormatter]
    [java.util Date Locale Timer TimerTask]))
 
+(def storage
+  "data")
+
 (def config
-  (edn/read-string (slurp "config.edn")))
+  (edn/read-string (slurp (io/file storage "config.edn"))))
 
 (def hostname
   (:hostname config))
 
 (def dev?
   (str/starts-with? hostname "http://localhost"))
-
-(def storage
-  "data")
 
 (.mkdirs (io/file storage "posters"))
 

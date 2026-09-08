@@ -11,7 +11,11 @@
   com.github.seancorfield/next.jdbc  {:mvn/version "1.3.1118"}
   org.xerial/sqlite-jdbc             {:mvn/version "3.53.4.0"}}
  :aliases
- {:dev
+ {:package
+  {:extra-paths ["package"]
+   :extra-deps  {uberdeps/uberdeps {:mvn/version "1.4.0"}}}
+
+  :dev
   {:extra-paths ["dev" "test"]
    :extra-deps
    {io.github.tonsky/clj-reload {:mvn/version "1.0.0"}
