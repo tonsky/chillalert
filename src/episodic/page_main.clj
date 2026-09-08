@@ -158,12 +158,25 @@
      (when-some [label (upcoming-label upcoming)]
        [:span.upcoming-label label])]))
 
+(defn default-poster-season
+  "Season whose poster to show by default: the season of the episode right after the last
+   watched one, or of the last watched episode itself when everything is watched, or 1 when
+   nothing is watched yet"
+  [episodes watched]
+  (if-some [last-watched (last (filter #(watched (:id %)) episodes))]
+    (let [next-ep (second (drop-while #(not= (:id %) (:id last-watched)) episodes))]
+      (:season (or next-ep last-watched)))
+    1))
+
 (defn render-show [show episodes watched season-posters]
   (let [today   (str (core/today))
         seasons (partition-by :season episodes)
         [code-signal name-signal season-signal] (hover-signals show)
         [from-signal to-signal from-id-signal to-id-signal] (drag-signals show)
-        offsets (reductions + 0 (map count seasons))]
+        offsets (reductions + 0 (map count seasons))
+        ;; base poster: the default season's, when it has a dedicated one, else the show's
+        poster-season (let [n (default-poster-season episodes watched)]
+                        (when (some #{n} season-posters) n))]
     [:div.show {:id (str "show-" (:id show))
                 "data-signals" (str "{" (subs code-signal 1) ": '', " (subs name-signal 1) ": '', "
                                  (subs season-signal 1) ": 0, " (subs from-signal 1) ": -1, " (subs to-signal 1) ": -1, "
@@ -178,12 +191,16 @@
       (if (:poster_path show)
         [:img {:src (str "/posters/" (tmdb/poster-name (:id show) nil) "?t=" (:updated_at show)) :alt ""}]
         [:div.poster-empty])
-      ;; layered over the show poster while an episode of that season is hovered. Always in the DOM
-      ;; so they are loaded up front and the swap is instant
+      ;; layered over the show poster while an episode of that season is hovered; the default
+      ;; season's also when nothing is hovered. Seasons without a dedicated poster fall through
+      ;; to the show poster underneath. Always in the DOM so they are loaded up front and the
+      ;; swap is instant
       (for [n season-posters]
         [:img.season-poster {:src (str "/posters/" (tmdb/poster-name (:id show) n) "?t=" (:updated_at show))
                              :alt ""
-                             "data-show" (str season-signal " === " n)}])]
+                             "data-show" (if (= n poster-season)
+                                           (str season-signal " === " n " || " season-signal " === 0")
+                                           (str season-signal " === " n))}])]
      [:div.details
       [:h2.title
        [:span.ep-code {"data-text" code-signal}]
