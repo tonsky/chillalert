@@ -40,9 +40,9 @@ a { color: var(--accent); }
   align-items: center;
   gap: 24px;
   width: min(100% - 20px, 640px);
-  height: 70px;
+  height: 60px;
   margin: 0 auto;
-  padding: 15px 0;
+  padding: 10px 0;
 }
 
 .topbar-inner .spacer { flex: 1; }
@@ -135,7 +135,7 @@ a { color: var(--accent); }
 .details { flex: 1; min-width: 0; }
 
 .title {
-  margin: 0;
+  margin: -6px 0 0 0;
   font-size: 28px;
   line-height: 1.2;
   /* single line: hover swaps in episode title, and a wrap would shift the grid under the pointer */
@@ -196,7 +196,7 @@ a { color: var(--accent); }
 .ep:hover, .ep.hovered { background-position-y: -40px; }
 
 .upcoming-label {
-  margin-left: 6px;
+  margin-left: 12px;
   font-size: 14px;
   color: var(--muted);
 }

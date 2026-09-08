@@ -73,14 +73,22 @@
     ring-cookies/wrap-cookies
     wrap-errors))
 
+(defn dev-app
+  "Reloads changed namespaces on each request, auto-refreshes browser
+   when files in src/ or i/ change. Dev-only deps, resolved at runtime"
+  []
+  (-> #'app
+    ((requiring-resolve 'ring.middleware.reload/wrap-reload))
+    ((requiring-resolve 'ring.middleware.refresh/wrap-refresh) ["src" "i"])))
+
 (def opts
   {:legacy-return-value? false
    :ip   "0.0.0.0"
    :port (or (:port core/config) 8080)})
 
-(mount/defstate server
+(mount/defstate ^{:on-reload :noop} server
   :start
-  (let [server (http/run-server app opts)]
+  (let [server (http/run-server (if core/dev? (dev-app) app) opts)]
     (core/log "Started HTTP server on" (str (:ip opts) ":" (:port opts)))
     server)
   :stop

@@ -14,7 +14,9 @@
  {:dev
   {:extra-paths ["dev" "test"]
    :extra-deps
-   {io.github.tonsky/clj-reload {:mvn/version "1.0.0"}}
+   {io.github.tonsky/clj-reload {:mvn/version "1.0.0"}
+    ring/ring-devel             {:mvn/version "1.15.5"}
+    ring-refresh/ring-refresh   {:mvn/version "0.2.0"}}
    :jvm-opts ["-ea"
               "-Djdk.attach.allowAttachSelf"
               "-XX:+UnlockDiagnosticVMOptions"

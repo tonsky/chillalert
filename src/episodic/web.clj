@@ -66,11 +66,11 @@
   [:div.topbar
    [:div.topbar-inner
     [:a.brand {:href "/"}
-     [:img.logo {:src (timestamp-url "/logo.png") :alt "Logo" :width "190" :height "40"}]]
+     [:img.logo {:src (timestamp-url "/logo.png") :alt "Logo" :width "180" :height "40"}]]
     [:div.spacer]
-    [:a {:href "/search"} "Add show"]
-    [:a {:href "/history"} "History"]
-    [:a {:href "/logout"} "Log out"]]])
+    [:a {:href "/search"} "add show"]
+    [:a {:href "/history"} "history"]
+    [:a {:href "/logout"} "log out"]]])
 
 (defn header
   "Search input + Add show button, used by the search page"
