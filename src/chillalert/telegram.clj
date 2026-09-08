@@ -1,7 +1,7 @@
-(ns episodic.telegram
+(ns chillalert.telegram
   (:require
    [cheshire.core :as json]
-   [episodic.core :as core]
+   [chillalert.core :as core]
    [org.httpkit.client :as http]))
 
 (def token

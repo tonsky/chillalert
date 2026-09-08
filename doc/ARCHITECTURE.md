@@ -31,10 +31,10 @@ id) and `text/javascript` responses (executed), which is all this app needs.
 ```
 config.edn            hostname, tg token, tmdb token (gitignored)
 data/                 gitignored runtime dir
-  episodic.sqlite
+  chillalert.sqlite
   posters/<show-id>.jpg
 i/                    static: style.css, datastar_1.0.3.js, favicon
-src/episodic/
+src/chillalert/
   core.clj            config, log, dev?, time helpers, timer (like site.core / allekinos.core)
   db.clj              datasource (mount), migrations, q / q1 / exec! helpers
   tmdb.clj            TMDB client, show/season import, poster caching

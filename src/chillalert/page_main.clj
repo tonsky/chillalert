@@ -1,11 +1,11 @@
-(ns episodic.page-main
+(ns chillalert.page-main
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
-   [episodic.core :as core]
-   [episodic.db :as db]
-   [episodic.tmdb :as tmdb]
-   [episodic.web :as web]))
+   [chillalert.core :as core]
+   [chillalert.db :as db]
+   [chillalert.tmdb :as tmdb]
+   [chillalert.web :as web]))
 
 ;; Data
 

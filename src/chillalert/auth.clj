@@ -1,14 +1,14 @@
-(ns episodic.auth
+(ns chillalert.auth
   (:require
    [clojure.string :as str]
-   [episodic.core :as core]
-   [episodic.db :as db]
-   [episodic.telegram :as telegram]
-   [episodic.web :as web]
+   [chillalert.core :as core]
+   [chillalert.db :as db]
+   [chillalert.telegram :as telegram]
+   [chillalert.web :as web]
    [mount.core :as mount]))
 
 (def cookie-name
-  "episodic_session")
+  "chillalert_session")
 
 (def cookie-attrs
   {:path      "/"
@@ -130,7 +130,7 @@
 (defn login-page [nonce]
   (web/page {:title "Log in" :class "center"}
     [:div.login {"data-on-interval__duration.2s" (str "@get('/login/poll/" nonce "')")}
-     [:img.logo {:src (web/timestamp-url "/logo.png") :alt "Episodic" :width "180" :height "40"}]
+     [:img.logo {:src (web/timestamp-url "/logo.png") :alt "Chill Alert" :width "180" :height "40"}]
      [:p "Track TV shows, get a Telegram message when a new episode is out."]
      [:a.btn {:href (str "https://t.me/" @telegram/bot-username "?start=" nonce)
               :target "_blank"}

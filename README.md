@@ -1,4 +1,4 @@
-# Episodic
+# Chill Alert
 
 Tracks TV show episodes you've watched and messages you on Telegram when a new one you're
 ready for is out. Clojure, SQLite, Datastar, TMDB.

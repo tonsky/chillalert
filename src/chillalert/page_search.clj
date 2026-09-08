@@ -1,11 +1,11 @@
-(ns episodic.page-search
+(ns chillalert.page-search
   (:require
    [clojure.string :as str]
-   [episodic.core :as core]
-   [episodic.db :as db]
-   [episodic.page-main :as page-main]
-   [episodic.tmdb :as tmdb]
-   [episodic.web :as web]))
+   [chillalert.core :as core]
+   [chillalert.db :as db]
+   [chillalert.page-main :as page-main]
+   [chillalert.tmdb :as tmdb]
+   [chillalert.web :as web]))
 
 (defn added-show-ids [user-id]
   (into #{} (map :show_id) (db/q "SELECT show_id FROM user_show WHERE user_id = ?" user-id)))

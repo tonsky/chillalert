@@ -1,4 +1,4 @@
-(ns episodic.core
+(ns chillalert.core
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -83,7 +83,7 @@
 ;; Timer
 
 (mount/defstate ^Timer timer
-  :start (Timer. "episodic-timer" true)
+  :start (Timer. "chillalert-timer" true)
   :stop  (.cancel ^Timer timer))
 
 (defn- timer-task ^TimerTask [f]

@@ -1,12 +1,12 @@
-(ns episodic.daily
+(ns chillalert.daily
   (:require
    [clojure.string :as str]
-   [episodic.auth :as auth]
-   [episodic.core :as core]
-   [episodic.db :as db]
-   [episodic.page-main :as page-main]
-   [episodic.telegram :as telegram]
-   [episodic.tmdb :as tmdb]
+   [chillalert.auth :as auth]
+   [chillalert.core :as core]
+   [chillalert.db :as db]
+   [chillalert.page-main :as page-main]
+   [chillalert.telegram :as telegram]
+   [chillalert.tmdb :as tmdb]
    [mount.core :as mount])
   (:import
    [java.util TimerTask]))

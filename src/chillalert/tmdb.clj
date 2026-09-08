@@ -1,10 +1,10 @@
-(ns episodic.tmdb
+(ns chillalert.tmdb
   (:require
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [episodic.core :as core]
-   [episodic.db :as db]
+   [chillalert.core :as core]
+   [chillalert.db :as db]
    [org.httpkit.client :as http])
   (:import
    [java.io File]))

@@ -15,7 +15,7 @@
    :no-reload '#{user}})
 
 (defn start []
-  (require 'episodic.main)
+  (require 'chillalert.main)
   (mount/start)
   :started)
 

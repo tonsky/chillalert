@@ -1,13 +1,13 @@
-(ns episodic.server
+(ns chillalert.server
   (:require
    [clj-simple-router.core :as router]
    [clojure.java.io :as io]
-   [episodic.auth :as auth]
-   [episodic.core :as core]
-   [episodic.page-main :as page-main]
-   [episodic.page-search :as page-search]
-   [episodic.tmdb :as tmdb]
-   [episodic.web :as web]
+   [chillalert.auth :as auth]
+   [chillalert.core :as core]
+   [chillalert.page-main :as page-main]
+   [chillalert.page-search :as page-search]
+   [chillalert.tmdb :as tmdb]
+   [chillalert.web :as web]
    [mount.core :as mount]
    [org.httpkit.server :as http]
    [ring.middleware.cookies :as ring-cookies]

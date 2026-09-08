@@ -1,6 +1,6 @@
-(ns episodic.db
+(ns chillalert.db
   (:require
-   [episodic.core :as core]
+   [chillalert.core :as core]
    [mount.core :as mount]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as rs])
@@ -110,7 +110,7 @@
 
 (mount/defstate ds
   :start
-  (doto (make-datasource (str core/storage "/episodic.sqlite"))
+  (doto (make-datasource (str core/storage "/chillalert.sqlite"))
     (migrate!)))
 
 (defn q

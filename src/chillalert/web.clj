@@ -1,4 +1,4 @@
-(ns episodic.web
+(ns chillalert.web
   (:require
    [clojure.java.io :as io]
    [hiccup2.core :as html]))
@@ -19,7 +19,7 @@
        [:head
         [:meta {:charset "UTF-8"}]
         [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-        [:title (if title (str title " — Episodic") "Episodic")]
+        [:title (if title (str title " — Chill Alert") "Chill Alert")]
         [:link {:rel "stylesheet" :href (timestamp-url "/style.css")}]
         [:link {:rel "icon" :href (timestamp-url "/favicon.png") :type "image/png" :sizes "64x64"}]
         [:link {:rel "apple-touch-icon" :href (timestamp-url "/apple-touch-icon.png") :sizes "180x180"}]
@@ -73,7 +73,7 @@
      [:div.topbar
       [:div.topbar-inner
        [:a.brand {:href "/"}
-        [:img.logo {:src (timestamp-url "/logo.png") :alt "Logo" :width "180" :height "40"}]]
+        [:img.logo {:src (timestamp-url "/logo.png") :alt "Logo" :width "190" :height "40"}]]
        [:div.spacer]
        (link "/search" :search "add show")
        (link "/history" :history "history")
