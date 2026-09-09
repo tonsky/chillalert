@@ -157,6 +157,8 @@ a { color: var(--accent); }
 
 .subtitle {
   margin: 2px 0 10px;
+  /* search results fill this in after the page renders, hold the line so nothing jumps */
+  min-height: 1.4em;
   color: var(--muted);
   font-size: 14px;
 }

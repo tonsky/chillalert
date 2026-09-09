@@ -48,6 +48,7 @@
     "GET /"                      req ((auth/wrap-require-user page-main/handle-index) req)
     "POST /episodes/*/toggle"    req ((auth/wrap-require-user page-main/handle-toggle) req)
     "GET /search"                req ((auth/wrap-require-user page-search/handle-search) req)
+    "GET /shows/*/details"       req ((auth/wrap-require-user page-search/handle-details) req)
     "POST /shows/*/add"          req ((auth/wrap-require-user page-search/handle-add) req)
     "GET /login"                 req (auth/handle-login req)
     "GET /login/poll/*"          req (auth/handle-poll req)

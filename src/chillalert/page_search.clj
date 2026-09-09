@@ -20,6 +20,16 @@
       (remove str/blank?)
       (str/join " • "))))
 
+(defn render-subtitle
+  "Rendered twice: first with only what `tmdb/search` returned, which is the start year at best,
+   then again by `handle-details` once the details request for that show has completed"
+  [result lazy?]
+  [:div.subtitle
+   (cond-> {:id (str "subtitle-" (:id result))}
+     ;; the replacement carries no trigger, so this fires exactly once per result
+     lazy? (assoc "data-on-intersect__once" (str "@get('/shows/" (:id result) "/details')")))
+   (result-subtitle result)])
+
 (defn render-result
   "Same structure as page-main/render-show, with the episode grid replaced
    by the show overview and an Add button"
@@ -31,7 +41,7 @@
       [:div.poster-empty])]
    [:div.details
     [:h2.title (:name result)]
-    [:div.subtitle (result-subtitle result)]
+    (render-subtitle result true)
     (when-not (str/blank? (:overview result))
       [:div.overview (:overview result)])
     (if added?
@@ -60,6 +70,25 @@
 (defn handle-search [req]
   (let [query (some-> (get-in req [:query-params "q"]) str/trim)]
     (web/html-response (search-page (:user req) query))))
+
+(defn show-details
+  "Already imported shows answer from the local DB, the daily job keeps them under a week old.
+   Season and episode counts come from the episode table, which drops placeholder seasons,
+   so they can be a little lower than TMDB's own numbers"
+  [show-id]
+  (if-some [show (db/q1 "SELECT * FROM show WHERE id = ?" show-id)]
+    (merge show
+      (db/q1 "SELECT COUNT(DISTINCT season) AS seasons, COUNT(*) AS episodes
+              FROM episode WHERE show_id = ?" show-id))
+    (tmdb/details show-id)))
+
+(defn handle-details [req]
+  (let [show-id (web/parse-id (web/path-param req 0))]
+    (if-not show-id
+      (web/error-response 400 "Bad show id")
+      (web/html-response
+        (web/render
+          (render-subtitle (assoc (show-details show-id) :id show-id) false))))))
 
 (defn handle-add [req]
   (let [user-id (-> req :user :id)
