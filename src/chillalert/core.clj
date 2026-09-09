@@ -5,8 +5,9 @@
    [clojure.string :as str]
    [mount.core :as mount])
   (:import
-   [java.time LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime]
+   [java.time Instant LocalDate LocalDateTime LocalTime ZoneId ZonedDateTime]
    [java.time.format DateTimeFormatter]
+   [java.time.temporal ChronoUnit]
    [java.util Date Locale Timer TimerTask]))
 
 (def storage
@@ -50,6 +51,16 @@
 (defn parse-date ^LocalDate [s]
   (when-not (str/blank? s)
     (LocalDate/parse s)))
+
+(defn ms->date
+  "Millisecond timestamp to UTC LocalDate"
+  ^LocalDate [ms]
+  (-> (Instant/ofEpochMilli ms) (.atZone UTC) (.toLocalDate)))
+
+(defn days-between
+  "Absolute distance between two dates in days"
+  ^long [^LocalDate a ^LocalDate b]
+  (abs (.between ChronoUnit/DAYS a b)))
 
 (def ^DateTimeFormatter month-day
   (-> (DateTimeFormatter/ofPattern "MMM d") (.withLocale Locale/US)))

@@ -10,8 +10,8 @@
 ;; Data
 
 (defn user-shows [user-id]
-  (db/q "SELECT show.* FROM show JOIN user_show ON user_show.show_id = show.id
-         WHERE user_show.user_id = ? ORDER BY user_show.touched_at DESC, show.name" user-id))
+  (db/q "SELECT show.*, user_show.added_at FROM show JOIN user_show ON user_show.show_id = show.id
+         WHERE user_show.user_id = ?" user-id))
 
 (defn user-show [user-id show-id]
   (db/q1 "SELECT show.* FROM show JOIN user_show ON user_show.show_id = show.id
@@ -27,10 +27,12 @@
 (defn show-episodes [show-id]
   (db/q "SELECT * FROM episode WHERE show_id = ? ORDER BY season, episode" show-id))
 
-(defn watched-ids [user-id show-id]
-  (into #{}
-    (map :episode_id)
-    (db/q "SELECT watched.episode_id FROM watched JOIN episode ON episode.id = watched.episode_id
+(defn watched-map
+  "{episode-id -> watched_at ms}, also usable as a truthy watched? lookup"
+  [user-id show-id]
+  (into {}
+    (map (juxt :episode_id :watched_at))
+    (db/q "SELECT watched.episode_id, watched.watched_at FROM watched JOIN episode ON episode.id = watched.episode_id
            WHERE watched.user_id = ? AND episode.show_id = ?" user-id show-id)))
 
 (defn episode-state [ep watched today]
@@ -211,15 +213,70 @@
         (render-season show season watched today offset))]]))
 
 (defn render-show-for [user-id show]
-  (render-show show (show-episodes (:id show)) (watched-ids user-id (:id show)) (custom-season-posters show)))
+  (render-show show (show-episodes (:id show)) (watched-map user-id (:id show)) (custom-season-posters show)))
+
+;; Ordering
+
+(defn ranking-dates
+  "Candidate dates for ordering the show, strongest signal first (see PLAN.md # Ordering shows):
+   1. when I last marked an episode watched
+   2. air date of the episode right after the last one I watched (last by episode number)
+   3. air date of the last episode of the season I am currently watching
+   4. air date of the first episode of the season after that
+   5. air date of the last episode of the season after that
+   6. when I added the show
+   Nothing watched yet counts as standing right before the very first episode. nils where
+   there is no such episode or its air date is unknown"
+  [show episodes watched]
+  (let [seasons      (partition-by :season episodes)
+        last-watched (last (filter #(watched (:id %)) episodes))
+        next-ep      (if last-watched
+                       (second (drop-while #(not= (:id %) (:id last-watched)) episodes))
+                       (first episodes))
+        cur-season   (when last-watched
+                       (first (filter #(= (:season last-watched) (:season (first %))) seasons)))
+        next-season  (first
+                       (if last-watched
+                         (drop-while #(<= (:season (first %)) (:season last-watched)) seasons)
+                         seasons))]
+    [(when (seq watched)
+       (core/ms->date (reduce max (vals watched))))
+     (some-> next-ep :air_date core/parse-date)
+     (some-> (last cur-season) :air_date core/parse-date)
+     (some-> (first next-season) :air_date core/parse-date)
+     (some-> (last next-season) :air_date core/parse-date)
+     (core/ms->date (:added_at show))]))
+
+(defn sort-key
+  "[<days from today, absolute> <priority> <name>] for the best (smallest) of ranking-dates.
+   Sorting by it ascending puts the most relevant shows first: both recent activity and
+   near releases rank high, either loses relevance as it drifts into the past or the future"
+  [show episodes watched today]
+  (-> (->> (ranking-dates show episodes watched)
+        (keep-indexed (fn [i date] (when date [(core/days-between today date) (inc i)])))
+        sort
+        first)
+    (conj (str/lower-case (:name show)))))
+
+;; Page
 
 (defn index-page [user]
-  (let [shows (user-shows (:id user))]
+  (let [user-id (:id user)
+        today   (core/today)
+        shows   (->> (user-shows user-id)
+                  (map (fn [show]
+                         (let [episodes (show-episodes (:id show))
+                               watched  (watched-map user-id (:id show))]
+                           {:show     show
+                            :episodes episodes
+                            :watched  watched
+                            :key      (sort-key show episodes watched today)})))
+                  (sort-by :key))]
     (web/page {:topbar (web/topbar user)}
       (if (empty? shows)
         [:p.empty "No shows yet. Press “Add show” to find one."]
-        (for [show shows]
-          (render-show-for (:id user) show))))))
+        (for [{:keys [show episodes watched]} shows]
+          (render-show show episodes watched (custom-season-posters show)))))))
 
 ;; Handlers
 

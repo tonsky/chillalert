@@ -70,7 +70,7 @@
 (defn episodes-to-notify [user-id date]
   (for [ep    (new-episodes user-id date)
         :let  [all     (page-main/show-episodes (:show_id ep))
-               watched (page-main/watched-ids user-id (:show_id ep))]
+               watched (page-main/watched-map user-id (:show_id ep))]
         :when (notify? ep all watched)]
     ep))
 
