@@ -75,7 +75,8 @@ So this is the system I came up with:
   - Air date for the last episode of a season I am currently watching (so if I last watched s03e05 that would be s03e10 assuming s03 has 10 episodes)
   - Air date for the first episode of a season immediately after last one I watched (so if I last watched s03e05 that would be s04e01) if available
   - Air date for the last episode of a season immediately after last one I watched (so if I last watched s03e05 that would be s04e10 assuming s04 has 10 episodes) if available
-  - Date I added the show to "My shows"
+  - // Temporarily disabled: Date I added the show to "My shows"
+- If I haven't watched the show, treat "last watched" as s01e00. So skip first date, second becomes s01e01, third -- e.g. s01e10 (assuming 10 episodes), and then skip fourth and fifth
 - Pair these dates with priorities in order they are listed (Last date when I marked episode watched -> priority 1, Air date for the episode immediately after last one I watched -> priority 2 etc)
 - For each of these dates, calculate _absolute_ distance from today, in days. So assuming today is Sep 15, then Sep 10 would be 5 and Sep 20 would also be 5.
 - Sort ascending lexographically by vector: [<distance in days> <priority> <Show’s name>] (compare distance first, if equal, proceed to compare priorities, then names)

@@ -224,28 +224,28 @@
    3. air date of the last episode of the season I am currently watching
    4. air date of the first episode of the season after that
    5. air date of the last episode of the season after that
-   6. when I added the show
-   Nothing watched yet counts as standing right before the very first episode. nils where
+   6. when I added the show (temporarily disabled)
+   Nothing watched yet counts as if I just watched s01e00: 1 is skipped, 2 is the first
+   episode, 3 the last episode of the first season, 4 and 5 are skipped. nils where
    there is no such episode or its air date is unknown"
-  [show episodes watched]
+  [_show episodes watched]
   (let [seasons      (partition-by :season episodes)
         last-watched (last (filter #(watched (:id %)) episodes))
         next-ep      (if last-watched
                        (second (drop-while #(not= (:id %) (:id last-watched)) episodes))
                        (first episodes))
-        cur-season   (when last-watched
-                       (first (filter #(= (:season last-watched) (:season (first %))) seasons)))
-        next-season  (first
-                       (if last-watched
-                         (drop-while #(<= (:season (first %)) (:season last-watched)) seasons)
-                         seasons))]
+        cur-season   (if last-watched
+                       (first (filter #(= (:season last-watched) (:season (first %))) seasons))
+                       (first seasons))
+        next-season  (when last-watched
+                       (first (drop-while #(<= (:season (first %)) (:season last-watched)) seasons)))]
     [(when (seq watched)
        (core/ms->date (reduce max (vals watched))))
      (some-> next-ep :air_date core/parse-date)
      (some-> (last cur-season) :air_date core/parse-date)
      (some-> (first next-season) :air_date core/parse-date)
      (some-> (last next-season) :air_date core/parse-date)
-     (core/ms->date (:added_at show))]))
+     #_(core/ms->date (:added_at _show))]))
 
 (defn sort-key
   "[<days from today, absolute> <priority> <name>] for the best (smallest) of ranking-dates.
