@@ -110,7 +110,8 @@
 
 (mount/defstate ds
   :start
-  (doto (make-datasource (str core/storage "/chillalert.sqlite"))
+  (doto (make-datasource
+          (str core/storage "/" (:db core/config "chillalert.sqlite")))
     (migrate!)))
 
 (defn q
