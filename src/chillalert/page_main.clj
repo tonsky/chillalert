@@ -256,6 +256,7 @@
         (keep-indexed (fn [i date] (when date [(core/days-between today date) (inc i)])))
         sort
         first)
+    (or [Long/MAX_VALUE Long/MAX_VALUE])
     (conj (str/lower-case (:name show)))))
 
 ;; Page
