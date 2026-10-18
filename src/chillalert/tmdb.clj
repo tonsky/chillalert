@@ -9,9 +9,6 @@
   (:import
    [java.io File]))
 
-(def token
-  (:tmdb/read-token core/config))
-
 (def lock
   (Object.))
 
@@ -23,7 +20,7 @@
                                        (merge
                                          {:method  :get
                                           :url     url
-                                          :headers {"Authorization" (str "Bearer " token)
+                                          :headers {"Authorization" (str "Bearer " (:tmdb-read-token core/config))
                                                     "Accept" "application/json"}
                                           :timeout 30000
                                           :as      :text}
@@ -110,7 +107,8 @@
   (str show-id (when season (str "-s" season)) ".jpg"))
 
 (defn- download-poster! [name poster-path]
-  (let [file (io/file core/storage "posters" name)
+  (let [file (core/data-file "posters" name)
+        _    (.mkdirs (.getParentFile file))
         {:keys [status body error]} @(http/request {:method :get
                                                     :url    (poster-url poster-path)
                                                     :timeout 30000
@@ -121,7 +119,7 @@
       (core/log "Failed to download poster" name poster-path status error))))
 
 (defn poster-file ^File [name]
-  (let [file (io/file core/storage "posters" name)]
+  (let [file (core/data-file "posters" name)]
     (when (.exists file)
       file)))
 

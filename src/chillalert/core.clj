@@ -1,6 +1,5 @@
 (ns chillalert.core
   (:require
-   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [mount.core :as mount])
@@ -10,19 +9,39 @@
    [java.time.temporal ChronoUnit]
    [java.util Date Locale Timer TimerTask]))
 
-(def storage
-  "data")
+;; Config
 
-(def config
-  (edn/read-string (slurp (io/file storage "config.edn"))))
+(def config-spec
+  "[key default parse]. Each key is read from `--key value` CLI arg,
+   then KEY env var, then falls back to default"
+  [[:base-url        "http://localhost:8080"]
+   [:port            8080 parse-long]
+   [:data-dir        "data"]
+   [:db-file         "chillalert.sqlite"]
+   [:tg-token        nil]
+   [:tmdb-read-token nil]
+   [:forced-user     nil parse-long]]) ; Telegram id, dev only: skips login and Telegram polling
 
-(def hostname
-  (:hostname config))
+(defn read-config [args]
+  (let [flags   (into {} (for [[key] config-spec] [(str "--" (name key)) key]))
+        cli     (into {} (map vec) (partition 2 args))
+        unknown (remove flags (keys cli))]
+    (when (seq unknown)
+      (throw (ex-info (str "Unknown arguments: " (str/join ", " unknown) ", expected: " (str/join ", " (keys flags))) {})))
+    (let [config (into {}
+                   (for [[key default parse] config-spec
+                         :let [env   (-> (name key) str/upper-case (str/replace "-" "_"))
+                               value (or (get cli (str "--" (name key))) (System/getenv env))]]
+                     [key (if (some? value) ((or parse identity) value) default)]))]
+      (assoc config :dev? (str/starts-with? (:base-url config) "http://localhost")))))
 
-(def dev?
-  (str/starts-with? hostname "http://localhost"))
+(mount/defstate config
+  :start (read-config (mount/args)))
 
-(.mkdirs (io/file storage "posters"))
+(defn data-file ^java.io.File [& path]
+  (apply io/file (:data-dir config) path))
+
+;; Utils
 
 (def ^ZoneId UTC
   (ZoneId/of "UTC"))

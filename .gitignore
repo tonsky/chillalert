@@ -10,3 +10,4 @@ target
 .clj-kondo/.cache/
 **/__pycache__/
 data/
+mise.local.toml

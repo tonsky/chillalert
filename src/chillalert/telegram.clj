@@ -4,9 +4,6 @@
    [chillalert.core :as core]
    [org.httpkit.client :as http]))
 
-(def token
-  (:tg/token core/config))
-
 (defn call!
   "Calls Bot API method with JSON params, returns :result"
   ([method]
@@ -17,7 +14,7 @@
    (let [{:keys [status body error]} @(http/request
                                         (merge
                                           {:method  :post
-                                           :url     (str "https://api.telegram.org/bot" token "/" method)
+                                           :url     (str "https://api.telegram.org/bot" (:tg-token core/config) "/" method)
                                            :headers {"Content-Type" "application/json"}
                                            :body    (json/generate-string params)
                                            :timeout 30000

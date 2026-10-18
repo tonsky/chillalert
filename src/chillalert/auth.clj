@@ -10,18 +10,19 @@
 (def cookie-name
   "chillalert_session")
 
-(def cookie-attrs
+(defn cookie-attrs []
   {:path      "/"
    :http-only true
-   :secure    (not core/dev?)
+   :secure    (not (:dev? core/config))
    :max-age   (* 10 365 24 3600)
    :same-site :lax})
 
 (def login-ttl-ms
   (* 15 60 1000))
 
-(def forced-user
+(defn forced-user
   "Telegram id, dev only: skips login entirely"
+  []
   (:forced-user core/config))
 
 ;; Users
@@ -45,13 +46,14 @@
 
 (defn wrap-session [handler]
   (fn [req]
-    (let [user (cond
-                 forced-user
-                 (or (db/q1 "SELECT * FROM user WHERE tg_id = ?" forced-user)
-                   (upsert-user! {:id forced-user :first_name "Dev" :last_name "User"}))
+    (let [forced-user (forced-user)
+          user        (cond
+                        forced-user
+                        (or (db/q1 "SELECT * FROM user WHERE tg_id = ?" forced-user)
+                          (upsert-user! {:id forced-user :first_name "Dev" :last_name "User"}))
 
-                 :else
-                 (some-> (get-in req [:cookies cookie-name :value]) user-by-session))]
+                        :else
+                        (some-> (get-in req [:cookies cookie-name :value]) user-by-session))]
       (handler (assoc req :user user)))))
 
 (defn wrap-require-user [handler]
@@ -78,7 +80,7 @@
     (when (and text (= "private" (:type chat)))
       (if-some [[_ nonce] (re-matches #"/start\s+(\S+)\s*" text)]
         (handle-start! (:id chat) (:from message) nonce)
-        (telegram/send-message! (:id chat) (str "Hi! To log in, open " core/hostname " and press “Log in with Telegram”."))))))
+        (telegram/send-message! (:id chat) (str "Hi! To log in, open " (:base-url core/config) " and press “Log in with Telegram”."))))))
 
 (defn- updates-loop [*running?]
   (loop [offset nil]
@@ -106,7 +108,7 @@
 
 (mount/defstate telegram-updates
   :start
-  (if forced-user
+  (if-some [forced-user (forced-user)]
     (do
       (core/log "Forced user" forced-user "set, not polling Telegram")
       nil)
@@ -159,13 +161,13 @@
         (db/exec! "INSERT INTO session (token, user_id, created_at) VALUES (?, ?, ?)" token (:user_id login) (core/now))
         (db/exec! "DELETE FROM login WHERE nonce = ?" nonce)
         (assoc (web/js-response "location.href = '/'")
-          :cookies {cookie-name (assoc cookie-attrs :value token)})))))
+          :cookies {cookie-name (assoc (cookie-attrs) :value token)})))))
 
 (defn handle-logout [req]
   (when-some [token (get-in req [:cookies cookie-name :value])]
     (db/exec! "DELETE FROM session WHERE token = ?" token))
   (assoc (web/redirect "/login")
-    :cookies {cookie-name (assoc cookie-attrs :value "" :max-age 0)}))
+    :cookies {cookie-name (assoc (cookie-attrs) :value "" :max-age 0)}))
 
 (defn cleanup-logins! []
   (db/exec! "DELETE FROM login WHERE created_at < ?" (- (core/now) (* 24 3600 1000))))

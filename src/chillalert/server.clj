@@ -25,7 +25,7 @@
      :headers {"Content-Length" (str (.length file))
                "Last-Modified"  (ring-time/format-date (ring-io/last-modified-date file))
                "Content-Type"   (ring-mime/ext-mime-type (.getName file))
-               "Cache-Control"  (if core/dev? "no-cache" "max-age=31536000, immutable")}
+               "Cache-Control"  (if (:dev? core/config) "no-cache" "max-age=31536000, immutable")}
      :body    file}
     {:status 404
      :headers {"Content-Type" "text/plain"}
@@ -53,6 +53,7 @@
     "GET /login"                 req (auth/handle-login req)
     "GET /login/poll/*"          req (auth/handle-poll req)
     "GET /logout"                req (auth/handle-logout req)
+    "GET /up"                    _   {:status 200 :headers {"Content-Type" "text/plain"} :body "OK"}
     "GET /i/**"                  req (static-handler req)
     "GET /posters/*"             req (poster-handler req)))
 
@@ -82,14 +83,12 @@
     ((requiring-resolve 'ring.middleware.reload/wrap-reload))
     ((requiring-resolve 'ring.middleware.refresh/wrap-refresh) ["src" "i"])))
 
-(def opts
-  {:legacy-return-value? false
-   :ip   "0.0.0.0"
-   :port (or (:port core/config) 8080)})
-
 (mount/defstate ^{:on-reload :noop} server
   :start
-  (let [server (http/run-server (if core/dev? (dev-app) app) opts)]
+  (let [opts   {:legacy-return-value? false
+                :ip                   "127.0.0.1"
+                :port                 (:port core/config)}
+        server (http/run-server (if (:dev? core/config) (dev-app) app) opts)]
     (core/log "Started HTTP server on" (str (:ip opts) ":" (:port opts)))
     server)
   :stop

@@ -7,6 +7,6 @@
    [chillalert.server]
    [mount.core :as mount]))
 
-(defn -main [& _]
-  (mount/start)
+(defn -main [& args]
+  (mount/start-with-args args)
   @(promise))

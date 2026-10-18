@@ -110,9 +110,10 @@
 
 (mount/defstate ds
   :start
-  (doto (make-datasource
-          (str core/storage "/" (:db core/config "chillalert.sqlite")))
-    (migrate!)))
+  (do
+    (.mkdirs (core/data-file))
+    (doto (make-datasource (str (core/data-file (:db-file core/config))))
+      (migrate!))))
 
 (defn q
   "Query returning vector of maps with plain lower-case keyword keys"
