@@ -45,7 +45,7 @@
          WHERE user_show.user_id = ?
            AND episode.air_date = ?
            AND episode.id NOT IN (SELECT episode_id FROM notification WHERE user_id = ?)
-         ORDER BY show.name, episode.season, episode.episode"
+         ORDER BY show.name, show.id, episode.season, episode.episode"
     user-id date user-id))
 
 (defn notify?
@@ -67,30 +67,57 @@
           (or (watched-in-season (dec (:season ep)))
             (watched-in-season (:season ep))))))))
 
-(defn episodes-to-notify [user-id date]
-  (for [ep    (new-episodes user-id date)
-        :let  [all     (page-main/show-episodes (:show_id ep))
-               watched (page-main/watched-map user-id (:show_id ep))]
-        :when (notify? ep all watched)]
-    ep))
+(defn season-drop?
+  "Whole season (more than one episode) aired on date"
+  [season-episodes date]
+  (boolean
+    (and
+      (next season-episodes)
+      (every? #(= date (:air_date %)) season-episodes))))
 
-(defn format-message [episodes]
-  (str "New episodes are out:\n\n"
-    (str/join "\n"
-      (for [ep episodes]
-        (str
-          "— " (:show_name ep)
-          " "  (page-main/episode-code ep)
-          " “" (:name ep) "”"
-          (when (= 1 (:finale ep)) " — Season finale!"))))))
+(defn notifications
+  "{:episodes [ep ...], :seasons [[ep ...] ...]}. If any new episode of a show passes notify?,
+   all new episodes of that show are included. Seasons released entirely on date go to :seasons"
+  [user-id date]
+  (let [groups (for [eps        (partition-by :show_id (new-episodes user-id date))
+                     :let       [show-id (:show_id (first eps))
+                                 all     (page-main/show-episodes show-id)
+                                 watched (page-main/watched-map user-id show-id)]
+                     :when      (some #(notify? % all watched) eps)
+                     season-eps (partition-by :season eps)
+                     :let       [season (:season (first season-eps))]]
+                 {:drop?    (season-drop? (filter #(= season (:season %)) all) date)
+                  :episodes season-eps})]
+    {:episodes (mapcat :episodes (remove :drop? groups))
+     :seasons  (map :episodes (filter :drop? groups))}))
+
+(defn format-message [{:keys [episodes seasons]}]
+  (str/join "\n\n"
+    (concat
+      (when (seq episodes)
+        [(str "New episodes are out:\n\n"
+           (str/join "\n"
+             (for [ep episodes]
+               (str
+                 "— " (:show_name ep)
+                 " "  (page-main/episode-code ep)
+                 " “" (:name ep) "”"
+                 (when (= 1 (:finale ep)) " — Season finale!")))))])
+      (when (seq seasons)
+        [(str (if (next seasons) "New seasons just dropped:" "New season just dropped:") "\n\n"
+           (str/join "\n"
+             (for [eps  seasons
+                   :let [ep (first eps)]]
+               (str "— " (:show_name ep) " " (format "s%02d" (:season ep)) ", " (count eps) " episodes"))))]))))
 
 (defn notify-user! [user date]
-  (let [episodes (episodes-to-notify (:id user) date)]
-    (when (seq episodes)
-      (core/log "Notifying user" (:id user) "about" (count episodes) "episodes")
-      (telegram/send-message! (:tg_id user) (format-message episodes))
+  (let [{:keys [episodes seasons] :as notifs} (notifications (:id user) date)
+        all-episodes (concat episodes (apply concat seasons))]
+    (when (seq all-episodes)
+      (core/log "Notifying user" (:id user) "about" (count all-episodes) "episodes")
+      (telegram/send-message! (:tg_id user) (format-message notifs))
       (let [now (core/now)]
-        (doseq [ep episodes]
+        (doseq [ep all-episodes]
           (db/exec! "INSERT OR IGNORE INTO notification (user_id, episode_id, sent_at) VALUES (?, ?, ?)" (:id user) (:id ep) now))))))
 
 (defn notify-all! [date]
@@ -162,6 +189,6 @@
                             AND episode.id NOT IN (SELECT episode_id FROM watched WHERE user_id = ?)
                           ORDER BY show.name, episode.season, episode.episode"
                      user-id (str (core/today)) user-id)]
-      (telegram/send-message! (:tg_id user) (format-message episodes))))
+      (telegram/send-message! (:tg_id user) (format-message {:episodes episodes}))))
 
   (preview-unwatched! 1))
